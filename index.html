@@ -220,6 +220,18 @@
   .modal-handle { width: 38px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 18px; }
   .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
 
+  /* Full-page modal treatment: editing screens (meds, patients, visits, owners,
+     VDP import, custom Rx) open like their own app page instead of a stacked
+     bottom sheet — consistent Back/Exit header, no dimmed backdrop, no
+     tap-outside-to-close (there's nothing to tap outside of). */
+  .modal-overlay.as-page { background: var(--bg); align-items: stretch; }
+  .modal-overlay.as-page .modal { border-radius: 0; width: 100%; max-height: 100vh; height: 100%; box-sizing: border-box; animation: none; }
+  .modal-overlay.as-page .modal-handle { display: none; }
+  .page-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+  .page-modal-header .nav-back { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--accent2); background:none; border:none; cursor:pointer; padding:6px 4px 6px 0; font-family:var(--sans); flex-shrink:0; }
+  .page-modal-header .nav-exit { font-size:13px; font-weight:700; color:var(--muted); background:none; border:none; cursor:pointer; padding:6px 0 6px 4px; font-family:var(--sans); flex-shrink:0; }
+  .page-modal-header .modal-title { flex:1; text-align:center; margin-bottom:0; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
   .route-entry { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 13px; margin-bottom: 9px; position: relative; }
   .route-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 11px; }
   .route-entry-title { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
@@ -423,6 +435,12 @@
   .patient-detail-avatar { width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
   .back-btn { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: var(--accent2); background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 12px; font-family: var(--sans); }
 
+  /* App navigation stack header — shown whenever a "screen" is pushed on top of a tab (Phase 4) */
+  .app-nav-header { display:none; align-items:center; justify-content:space-between; gap:10px; padding:10px 4px 14px 4px; }
+  .app-nav-header .nav-back { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--accent2); background:none; border:none; cursor:pointer; padding:6px 4px; font-family:var(--sans); }
+  .app-nav-header .nav-title { flex:1; text-align:center; font-size:14px; font-weight:800; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .app-nav-header .nav-exit { font-size:13px; font-weight:700; color:var(--muted); background:none; border:none; cursor:pointer; padding:6px 4px; font-family:var(--sans); }
+
   /* Prescription card within visit */
   .rx-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--border); }
   .rx-row:last-child { border-bottom: none; }
@@ -545,6 +563,13 @@
   </div>
 </div>
 
+<!-- APP NAVIGATION STACK HEADER — shown for pushed "screens" (Phase 4) -->
+<div class="app-nav-header" id="app-nav-header">
+  <button class="nav-back" id="app-nav-back-btn" onclick="popPage()">← Back</button>
+  <div class="nav-title" id="app-nav-title"></div>
+  <button class="nav-exit" id="app-nav-exit-btn" onclick="exitToTab()">Exit ✕</button>
+</div>
+
 <!-- CALCULATE PAGE -->
 <div class="page active" id="page-calc">
   <!-- Mini sync bar -->
@@ -577,6 +602,7 @@
   <!-- CALCULATOR CARD -->
   <div class="card" id="calc-card">
 
+    <div id="calc-drug-menu">
     <!-- SEARCH -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <div class="search-bar" style="flex:1;margin:0">
@@ -588,6 +614,7 @@
 
     <!-- MED LIST -->
     <div id="calc-med-list" style="display:none;margin-bottom:10px;max-height:320px;overflow-y:auto;border-radius:10px;border:1px solid var(--border)"></div>
+    </div><!-- /calc-drug-menu -->
 
     <!-- SELECTED MED CHIP -->
     <div id="calc-selected-chip" style="display:none;margin-bottom:12px">
@@ -597,7 +624,7 @@
           <div id="calc-chip-brand" style="font-size:11px;color:var(--muted);margin-top:1px"></div>
         </div>
         <button id="calc-chip-pin" onclick="togglePinSelected()" style="background:none;border:none;font-size:17px;cursor:pointer;padding:0 3px;line-height:1;opacity:0.5;transition:opacity 0.2s" title="Pin drug">⭐</button>
-        <button onclick="clearCalcSelection()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;line-height:1">⟵</button>
+        <button onclick="popPage()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 2px;line-height:1">⟵</button>
       </div>
     </div>
 
@@ -673,7 +700,7 @@
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="shareResult()">Share</button>
           <button class="btn btn-secondary btn-sm" style="flex:1;color:var(--accent2);border-color:var(--accent2)" onclick="printCalcRx()">🖨 Rx PDF</button>
           <button class="btn btn-secondary btn-sm" style="flex:1;color:var(--accent);border-color:var(--accent);display:none" id="save-to-patient-btn" onclick="saveCalcToPatient()">📋 Patient</button>
-          <button class="btn btn-secondary btn-sm" onclick="clearCalcForm()" title="New calculation">✕</button>
+          <button class="btn btn-secondary btn-sm" onclick="popPage()" title="New calculation">✕</button>
         </div>
       </div>
     </div><!-- /calc-form-inner -->
@@ -707,7 +734,7 @@
     <!-- ── BASIC RATE SCREEN ── -->
     <div id="fluid-screen-basic" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button onclick="fluidShowMenu()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
+        <button onclick="popPage()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
         <div style="font-weight:800;font-size:15px">Basic Rate</div>
       </div>
 
@@ -744,7 +771,7 @@
     <!-- ── COMPREHENSIVE SCREEN ── -->
     <div id="fluid-screen-comprehensive" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button onclick="fluidShowMenu()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
+        <button onclick="popPage()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
         <div style="font-weight:800;font-size:15px">Comprehensive Rate</div>
       </div>
 
@@ -823,7 +850,7 @@
     <!-- ── POTASSIUM INFUSION SCREEN ── -->
     <div id="fluid-screen-potassium" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
-        <button onclick="fluidShowMenu()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
+        <button onclick="popPage()" style="background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0">←</button>
         <div style="font-weight:800;font-size:15px">Potassium Infusion</div>
       </div>
 
@@ -938,7 +965,7 @@
 
 <!-- PATIENT DETAIL PAGE -->
 <div class="page" id="page-patient-detail">
-  <button class="back-btn" onclick="showPage('patients')">← Back to Patients</button>
+  <button class="back-btn" onclick="popPage()">← Back to Patients</button>
   <div id="patient-detail-content"></div>
 </div>
 
@@ -1055,17 +1082,46 @@
   <!-- GITHUB SYNC SECTION -->
   <div class="card">
     <div class="card-title">☁️ GitHub Cloud Sync</div>
-    <div class="field"><label>GITHUB PERSONAL ACCESS TOKEN</label>
+
+    <!-- Setup mode: new clinic vs join existing -->
+    <div style="display:flex;gap:7px;margin-bottom:11px" id="clinic-mode-toggle">
+      <button type="button" class="btn btn-sm" id="clinic-mode-new-btn" onclick="setClinicSetupMode('new')"
+        style="flex:1;border:2px solid var(--accent);background:rgba(74,240,176,0.1);color:var(--accent);font-weight:800">🆕 New Clinic</button>
+      <button type="button" class="btn btn-sm" id="clinic-mode-join-btn" onclick="setClinicSetupMode('join')"
+        style="flex:1;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:800">🔗 Join Clinic</button>
+    </div>
+    <div id="clinic-mode-help" style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:11px"></div>
+
+    <div class="field"><label>GITHUB PERSONAL ACCESS TOKEN <span style="font-weight:400;color:var(--muted)">(yours — never shared with colleagues)</span></label>
       <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
     </div>
-    <div class="field"><label>GIST ID (leave blank to create new)</label>
+    <div class="field" id="gh-gist-id-field"><label>GIST ID <span style="font-weight:400;color:var(--muted)">(the whole clinic shares ONE Gist ID)</span></label>
       <input type="text" id="gh-gist-id" placeholder="Auto-created on first sync">
     </div>
 
     <!-- Sync mode row -->
-    <div style="background:rgba(74,240,176,0.07);border:1px solid rgba(74,240,176,0.25);border-radius:10px;padding:12px 13px;margin-bottom:11px">
-      <div style="font-size:12px;font-weight:800;color:var(--accent);margin-bottom:4px">📤 Local-First Sync</div>
-      <div style="font-size:11px;color:var(--muted);line-height:1.6">Your device is always the source of truth. Syncing <b style="color:var(--text)">pushes your data to the cloud</b> first. Cloud data is only merged in — it will never overwrite your local data.</div>
+    <div style="background:rgba(74,159,240,0.07);border:1px solid rgba(74,159,240,0.25);border-radius:10px;padding:12px 13px;margin-bottom:11px">
+      <div style="font-size:12px;font-weight:800;color:var(--accent2);margin-bottom:4px">🔀 Multi-Doctor Sync</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6">This is one shared clinic. Every doctor uses their <b style="color:var(--text)">own token</b> but the <b style="color:var(--text)">same Gist ID</b>. On sync, each record (med, patient, visit) is compared by its own last-edited time — the newer edit wins, whether it came from this device or another doctor's. Nothing is silently overwritten: if two doctors edit the same record within a few minutes of each other, the older edit is kept in the conflict log below instead of being lost.</div>
+    </div>
+
+    <!-- Share this clinic (shown once connected) -->
+    <div id="clinic-share-row" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:11px">
+      <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px">📋 Invite Another Doctor</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px">Share this Clinic Gist ID. They should pick "Join Clinic" above, paste it in, and enter their <b style="color:var(--text)">own</b> GitHub token.</div>
+      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="copyGistIdToClipboard()">📋 Copy Clinic Gist ID</button>
+    </div>
+
+    <!-- Doctor / clinic identity -->
+    <div style="display:flex;gap:8px;margin-bottom:11px">
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.03em">THIS DOCTOR</div>
+        <div style="font-size:12px;font-family:var(--mono);margin-top:2px;word-break:break-all" id="doctor-id-display">–</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.03em">CLINIC ID</div>
+        <div style="font-size:12px;font-family:var(--mono);margin-top:2px;word-break:break-all" id="clinic-id-display">–</div>
+      </div>
     </div>
 
     <!-- Auto-sync toggle -->
@@ -1080,13 +1136,31 @@
       </button>
     </div>
 
+    <!-- Resume + live-poll info -->
+    <div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:11px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">Live Sync While Open</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Also syncs automatically whenever you return to the app. Optionally keep pulling in the background while it's open, so you see a colleague's changes without switching away:</div>
+      </div>
+    </div>
+    <div style="margin-bottom:11px">
+      <select id="live-poll-select" onchange="setLivePollInterval()" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--sans);font-size:13px">
+        <option value="0">Off — sync on resume + after my own edits only</option>
+        <option value="30000">Every 30 seconds</option>
+        <option value="60000">Every 1 minute</option>
+        <option value="120000">Every 2 minutes</option>
+      </select>
+    </div>
+
     <div id="sync-status-row" style="margin-bottom:11px">
       <div class="sync-row">
         <div class="sync-dot" id="sync-dot"></div>
         <div style="flex:1">
           <div style="font-size:13px;font-weight:700" id="sync-status-text">Not configured</div>
           <div style="font-size:11px;color:var(--muted)" id="sync-last-time"></div>
+          <div style="font-size:11px;color:var(--muted)" id="sync-last-editor"></div>
           <div style="font-size:11px;color:var(--accent);margin-top:2px" id="sync-data-count"></div>
+          <span id="sync-pending-badge" style="display:none;font-size:11px;color:var(--warn);font-weight:700;margin-top:3px"></span>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="syncNow()">Sync Now</button>
       </div>
@@ -1099,9 +1173,18 @@
       <button class="btn btn-warn btn-sm" style="flex:1" onclick="resetGistId()">🗑 Delete Backup & Create New</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-top:9px;line-height:1.6">All data (patients, meds, history) is stored in a single private Gist as JSON. Token needs <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">gist</code> scope only. Create at <code style="background:var(--surface2);padding:1px 5px;border-radius:3px">github.com/settings/tokens</code> — use a Classic token (not fine-grained) for best compatibility.</div>
+
+    <!-- Conflict log -->
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700">Sync Conflicts <span id="sync-conflict-badge" style="display:none;font-size:11px;color:var(--warn);font-weight:800;margin-left:6px"></span></div>
+        <button class="btn btn-secondary btn-sm" style="padding:5px 10px;font-size:11px" onclick="clearSyncConflicts()">Clear</button>
+      </div>
+      <div id="sync-conflict-list"></div>
+    </div>
   </div>
 
-  <div style="text-align:center;color:var(--muted);font-size:11px;font-family:var(--mono);padding:20px 0">VetDose v6.0 · Patient Records + Cloud Sync · Add to Home Screen for app experience</div>
+  <div style="text-align:center;color:var(--muted);font-size:11px;font-family:var(--mono);padding:20px 0">VetDose v10.0 · Patient Records + Multi-Doctor Cloud Sync · Add to Home Screen for app experience</div>
 </div>
 
 <!-- BOTTOM NAV -->
@@ -1114,9 +1197,13 @@
 </div>
 
 <!-- VDP MERGE MODAL -->
-<div class="modal-overlay" id="vdp-modal">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
+<div class="modal-overlay as-page" id="vdp-modal">
+  <div class="modal">
+    <div class="page-modal-header">
+      <button class="nav-back" onclick="popPage()">← Back</button>
+      <div class="modal-title" style="margin-bottom:0">Import Package</div>
+      <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+    </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">📦</div>
       <div>
@@ -1162,10 +1249,13 @@
 </div>
 
 <!-- ADD/EDIT MODAL -->
-<div class="modal-overlay" id="med-modal">
+<div class="modal-overlay as-page" id="med-modal">
   <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="modal-title" id="modal-title">Add Medication</div>
+    <div class="page-modal-header">
+      <button class="nav-back" onclick="popPage()">← Back</button>
+      <div class="modal-title" id="modal-title">Add Medication</div>
+      <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+    </div>
 
     <div class="field">
       <label>MEDICATION NAME</label>
@@ -1213,15 +1303,18 @@
     </div>
 
     <button class="btn btn-primary" style="margin-bottom:10px" onclick="saveMed()">Save Medication</button>
-    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-secondary" onclick="popPage()">Cancel</button>
   </div>
 </div>
 
 <!-- ═══ NEW PATIENT MODAL ═══ -->
-<div class="modal-overlay" id="patient-modal" onclick="this.classList.remove('show')">
-<div class="modal" onclick="event.stopPropagation()" style="padding-bottom:40px">
-  <div class="modal-handle"></div>
-  <div class="modal-title" id="patient-modal-title">New Patient</div>
+<div class="modal-overlay as-page" id="patient-modal">
+<div class="modal" style="padding-bottom:40px">
+  <div class="page-modal-header">
+    <button class="nav-back" onclick="popPage()">← Back</button>
+    <div class="modal-title" id="patient-modal-title">New Patient</div>
+    <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+  </div>
 
   <div class="modal-tabs" id="patient-modal-tabs">
     <button class="modal-tab active" onclick="switchPatientModalTab('info')">🐾 Pet Info</button>
@@ -1299,31 +1392,37 @@
   </div>
 
   <button class="btn btn-primary" style="margin-top:14px;margin-bottom:10px" onclick="savePatient()">Save Patient</button>
-  <button class="btn btn-secondary" onclick="document.getElementById('patient-modal').classList.remove('show')">Cancel</button>
+  <button class="btn btn-secondary" onclick="popPage()">Cancel</button>
 </div>
 </div>
 
 
 <!-- ═══ OWNER MODAL ═══ -->
-<div class="modal-overlay" id="owner-modal" onclick="this.classList.remove('show')">
-<div class="modal" onclick="event.stopPropagation()" style="padding-bottom:40px">
-  <div class="modal-handle"></div>
-  <div class="modal-title" id="owner-modal-title">New Owner</div>
+<div class="modal-overlay as-page" id="owner-modal">
+<div class="modal" style="padding-bottom:40px">
+  <div class="page-modal-header">
+    <button class="nav-back" onclick="popPage()">← Back</button>
+    <div class="modal-title" id="owner-modal-title">New Owner</div>
+    <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+  </div>
   <div class="field"><label>OWNER NAME *</label><input type="text" id="om-name" placeholder="e.g. Ahmed Hassan"></div>
   <div class="field"><label>PHONE</label><input type="tel" id="om-phone" placeholder="e.g. 01012345678" inputmode="tel"></div>
   <div class="field"><label>WHATSAPP</label><input type="tel" id="om-whatsapp" placeholder="Same as phone or different" inputmode="tel"></div>
   <div class="field"><label>ADDRESS</label><textarea id="om-address" rows="2" style="resize:none" placeholder="e.g. 15 Tahrir St, Cairo"></textarea></div>
   <div class="field"><label>NOTES</label><textarea id="om-notes" rows="2" style="resize:none" placeholder="Any important notes about this owner..."></textarea></div>
   <button class="btn btn-primary" style="margin-top:14px;margin-bottom:10px" onclick="saveOwner()">Save Owner</button>
-  <button class="btn btn-secondary" onclick="document.getElementById('owner-modal').classList.remove('show')">Cancel</button>
+  <button class="btn btn-secondary" onclick="popPage()">Cancel</button>
 </div>
 </div>
 
 <!-- ═══ NEW VISIT MODAL ═══ -->
-<div class="modal-overlay" id="visit-modal" onclick="this.classList.remove('show')">
-<div class="modal" onclick="event.stopPropagation()" style="padding-bottom:40px">
-  <div class="modal-handle"></div>
-  <div class="modal-title" id="visit-modal-title">New Visit</div>
+<div class="modal-overlay as-page" id="visit-modal">
+<div class="modal" style="padding-bottom:40px">
+  <div class="page-modal-header">
+    <button class="nav-back" onclick="popPage()">← Back</button>
+    <div class="modal-title" id="visit-modal-title">New Visit</div>
+    <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+  </div>
 
   <div class="modal-tabs">
     <button class="modal-tab active" onclick="switchVisitModalTab('basics')">📋 Visit</button>
@@ -1495,13 +1594,13 @@
   </div>
 
   <button class="btn btn-primary" style="margin-top:14px;margin-bottom:10px" onclick="saveVisit()">Save Visit</button>
-  <button class="btn btn-secondary" onclick="document.getElementById('visit-modal').classList.remove('show')">Cancel</button>
+  <button class="btn btn-secondary" onclick="popPage()">Cancel</button>
 </div>
 </div>
 
 
 <!-- SYNC CHOICE MODAL (merge vs replace on pull) -->
-<div class="modal-overlay" id="sync-choice-modal" onclick="this.classList.remove('show')">
+<div class="modal-overlay" id="sync-choice-modal" onclick="syncChoiceResolve(null)">
   <div class="modal" onclick="event.stopPropagation()" style="padding-bottom:24px">
     <div class="modal-handle"></div>
     <div style="font-size:18px;font-weight:800;margin-bottom:6px">☁️ Pull from Cloud</div>
@@ -1549,10 +1648,13 @@
 </div>
 
 <!-- VISIT PICKER MODAL (add drug to existing visit or new) -->
-<div class="modal-overlay" id="visit-picker-modal" onclick="this.classList.remove('show')">
-  <div class="modal" onclick="event.stopPropagation()" style="padding-bottom:28px">
-    <div class="modal-handle"></div>
-    <div style="font-size:17px;font-weight:800;margin-bottom:4px" id="visit-picker-title">Save to Patient Record</div>
+<div class="modal-overlay as-page" id="visit-picker-modal">
+  <div class="modal" style="padding-bottom:28px">
+    <div class="page-modal-header">
+      <button class="nav-back" onclick="popPage()">← Back</button>
+      <div class="modal-title" style="margin-bottom:0" id="visit-picker-title">Save to Patient Record</div>
+      <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
+    </div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="visit-picker-drug"></div>
 
     <!-- Today's visits (if any) -->
@@ -1563,16 +1665,17 @@
 
     <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px" id="visit-picker-new-label">Or Start New Visit</div>
     <button class="btn btn-primary" onclick="visitPickerNewVisitAuto()" style="margin-bottom:10px">＋ New Visit</button>
-    <button class="btn btn-secondary" onclick="document.getElementById('visit-picker-modal').classList.remove('show')">Cancel</button>
+    <button class="btn btn-secondary" onclick="popPage()">Cancel</button>
   </div>
 </div>
 
 <!-- CUSTOM RX MODAL -->
-<div class="modal-overlay" id="custom-rx-modal" onclick="this.id==='custom-rx-modal'&&this.classList.remove('show')">
-  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
-    <div class="modal-header">
-      <div class="modal-title">📋 Custom Prescription</div>
-      <button class="modal-close" onclick="document.getElementById('custom-rx-modal').classList.remove('show')">✕</button>
+<div class="modal-overlay as-page" id="custom-rx-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="page-modal-header">
+      <button class="nav-back" onclick="popPage()">← Back</button>
+      <div class="modal-title" style="margin-bottom:0">📋 Custom Prescription</div>
+      <button class="nav-exit" onclick="exitToTab()">Exit ✕</button>
     </div>
     <div style="padding:0 14px 14px">
       <div class="field">
@@ -1625,7 +1728,7 @@ let meds = [];
 let calcHistory = [];
 let doctorName = '';
 let clinicName = '';
-let deletedIds = { meds: [], patients: [] }; // tombstones for cloud sync deletions
+let deletedIds = { meds: [], patients: [], visits: [], owners: [] }; // tombstones for cloud sync deletions
 let selectedMed = null;
 let selectedRoute = null;
 let selectedCase = null;
@@ -1650,6 +1753,146 @@ let ghGistId = '';
 let syncBusy = false;
 let lastSyncTime = null;
 const GIST_FILENAME = 'vetdose_data.json';
+
+// ─── DOCTOR / CLINIC IDENTITY (Phase 2 — multi-clinic sync) ───
+// clinicId identifies the shared clinic Gist ("main system"); doctorId identifies
+// this device/doctor's own token identity. Every record gets stamped with both
+// plus updatedAt/updatedBy so per-record merges can resolve conflicts by timestamp.
+let doctorId = '';
+let clinicId = '';
+let syncConflicts = [];   // recent conflict log entries, newest first
+let pendingChanges = { meds: [], patients: [], visits: [], owners: [] }; // ids touched locally since last successful push
+let doctorRegistry = {}; // doctorId -> { name, lastSeen } — lets the UI show real names instead of raw ids
+const CONFLICT_WINDOW_MS = 5 * 60 * 1000; // edits within 5 min of each other by different doctors are logged as conflicts
+
+function initIdentity() {
+  try {
+    doctorId = localStorage.getItem('vd_doctor_id') || '';
+    if (!doctorId) { doctorId = 'dr_' + uid(); localStorage.setItem('vd_doctor_id', doctorId); }
+    clinicId = localStorage.getItem('vd_clinic_id') || '';
+    if (!clinicId) { clinicId = 'clinic_' + uid(); localStorage.setItem('vd_clinic_id', clinicId); }
+    const savedConflicts = localStorage.getItem('vd_sync_conflicts');
+    if (savedConflicts) syncConflicts = JSON.parse(savedConflicts);
+    const savedPending = localStorage.getItem('vd_pending_changes');
+    if (savedPending) pendingChanges = Object.assign({ meds: [], patients: [], visits: [], owners: [] }, JSON.parse(savedPending));
+    const savedRegistry = localStorage.getItem('vd_doctor_registry');
+    if (savedRegistry) doctorRegistry = JSON.parse(savedRegistry);
+  } catch(e) {}
+}
+
+// Record/refresh this device's own entry in the doctor registry (called whenever
+// the doctor's name is saved, and once at startup) so other clinic members can
+// resolve this doctorId to a human name after syncing.
+function touchDoctorRegistry() {
+  doctorRegistry[doctorId] = { name: doctorName || 'Unnamed doctor', lastSeen: new Date().toISOString() };
+  try { localStorage.setItem('vd_doctor_registry', JSON.stringify(doctorRegistry)); } catch(e) {}
+}
+
+// Resolve a doctorId to a display name using the registry, falling back gracefully
+// for legacy records or doctors we haven't synced with yet.
+function doctorDisplayName(id) {
+  if (!id) return 'unknown doctor';
+  if (id === 'legacy') return 'legacy record';
+  if (id === doctorId) return doctorName ? doctorName : 'you';
+  const entry = doctorRegistry[id];
+  if (entry?.name) return entry.name;
+  return 'Dr. ' + id.replace(/^dr_/, '').slice(0, 6);
+}
+
+// Merge two doctor registries, keeping whichever entry per doctorId has the newer lastSeen.
+function mergeDoctorRegistry(a = {}, b = {}) {
+  const out = { ...a };
+  for (const id of Object.keys(b)) {
+    const existing = out[id];
+    if (!existing || Date.parse(b[id].lastSeen || 0) > Date.parse(existing.lastSeen || 0)) {
+      out[id] = b[id];
+    }
+  }
+  return out;
+}
+
+// When joining an existing clinic Gist (pulling data that already has a clinicId),
+// converge to the shared clinicId instead of keeping our own locally-generated one.
+function adoptClinicId(remoteClinicId) {
+  if (remoteClinicId && remoteClinicId !== clinicId) {
+    clinicId = remoteClinicId;
+    try { localStorage.setItem('vd_clinic_id', clinicId); } catch(e) {}
+  }
+}
+
+function savePendingChangesLS() {
+  try { localStorage.setItem('vd_pending_changes', JSON.stringify(pendingChanges)); } catch(e) {}
+}
+
+function markDirty(type, id) {
+  if (!pendingChanges[type]) pendingChanges[type] = [];
+  if (!pendingChanges[type].includes(id)) pendingChanges[type].push(id);
+  savePendingChangesLS();
+  updatePendingBadge();
+}
+
+function clearPendingChanges() {
+  pendingChanges = { meds: [], patients: [], visits: [], owners: [] };
+  savePendingChangesLS();
+  updatePendingBadge();
+}
+
+function pendingChangeCount() {
+  return (pendingChanges.meds?.length||0) + (pendingChanges.patients?.length||0) +
+         (pendingChanges.visits?.length||0) + (pendingChanges.owners?.length||0);
+}
+
+function updatePendingBadge() {
+  const el = document.getElementById('sync-pending-badge');
+  if (!el) return;
+  const n = pendingChangeCount();
+  if (n > 0) { el.style.display = 'inline-block'; el.textContent = n + ' unsynced change' + (n!==1?'s':''); }
+  else { el.style.display = 'none'; }
+}
+
+// Stamp a record with sync metadata whenever it's created/edited locally.
+// type/id (optional) also mark the record dirty in the pending-changes queue.
+function stampRecord(obj, type, id) {
+  obj.updatedAt = new Date().toISOString();
+  obj.updatedBy = doctorId;
+  obj.clinicId = clinicId;
+  if (type && id) markDirty(type, id);
+  return obj;
+}
+
+function logSyncConflict(entry) {
+  syncConflicts.unshift(Object.assign({ ts: new Date().toISOString() }, entry));
+  syncConflicts = syncConflicts.slice(0, 50);
+  try { localStorage.setItem('vd_sync_conflicts', JSON.stringify(syncConflicts)); } catch(e) {}
+  updateConflictBadge();
+}
+
+function clearSyncConflicts() {
+  syncConflicts = [];
+  try { localStorage.removeItem('vd_sync_conflicts'); } catch(e) {}
+  updateConflictBadge();
+  renderSyncConflicts();
+  toast('Conflict log cleared');
+}
+
+function updateConflictBadge() {
+  const el = document.getElementById('sync-conflict-badge');
+  if (!el) return;
+  if (syncConflicts.length > 0) { el.style.display = 'inline-block'; el.textContent = '⚠ ' + syncConflicts.length + ' conflict' + (syncConflicts.length!==1?'s':''); }
+  else { el.style.display = 'none'; }
+}
+
+function renderSyncConflicts() {
+  const list = document.getElementById('sync-conflict-list');
+  if (!list) return;
+  if (!syncConflicts.length) { list.innerHTML = '<div style="font-size:12px;color:var(--muted)">No conflicts recorded.</div>'; return; }
+  list.innerHTML = syncConflicts.map(c => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5">
+      <div style="font-weight:700;color:var(--warn)">${c.type}${c.name ? ' — ' + c.name : ''}</div>
+      <div style="color:var(--muted)">Kept the ${c.keptSide} edit (by ${doctorDisplayName(c.keptBy)}); discarded the ${c.otherSide} edit (by ${doctorDisplayName(c.otherBy)}) — both made within a few minutes of each other.</div>
+      <div style="color:var(--muted);font-size:11px">${new Date(c.ts).toLocaleString()}</div>
+    </div>`).join('');
+}
 
 // ─── MULTI-SESSION STATE ──────────────────────────────────
 // Each session: { id, label, patientId, drugIds:[] }
@@ -1716,7 +1959,7 @@ async function save() {
     savedAt: new Date().toISOString()
   };
   if (usingIDB) {
-    await idbSet('vetdose_data', payload);
+    const ok = await idbSet('vetdose_data', payload);
     // Keep a lightweight localStorage mirror as safety net
     try {
       localStorage.setItem('vetdose_backup_ts', payload.savedAt);
@@ -1726,6 +1969,12 @@ async function save() {
       localStorage.setItem('vetdose_doctor', doctorName);
       localStorage.setItem('vetdose_schema_ver', SCHEMA_VERSION.toString());
     } catch(e) { /* LS full — IDB is primary */ }
+    if (!ok) {
+      // IndexedDB write failed silently before this check existed — the
+      // localStorage mirror above still has the latest data, but flag it
+      // so the user knows not to trust "saved" until it's resolved.
+      toast('⚠️ Could not save to device storage — your change is only in a backup copy. Try reloading the app.', 'error');
+    }
   } else {
     // localStorage fallback
     try {
@@ -1743,11 +1992,22 @@ async function loadData() {
   if (usingIDB) {
     const data = await idbGet('vetdose_data');
     if (data && Array.isArray(data.meds)) {
+      // A previous idbSet() may have failed silently (see BUGS.md) while the
+      // localStorage mirror write still succeeded — if the mirror is newer
+      // than what IndexedDB actually has on disk, trust the mirror instead
+      // of quietly reverting to stale data.
+      const idbSavedAt = Date.parse(data.savedAt || 0) || 0;
+      const lsSavedAt = Date.parse(localStorage.getItem('vetdose_backup_ts') || 0) || 0;
+      if (lsSavedAt > idbSavedAt) {
+        migrateFromLS();
+        updateStorageBadge(true);
+        return;
+      }
       meds        = data.meds.map(ensureV3Fields);
       calcHistory = data.history || [];
       doctorName  = data.doctorName || '';
       clinicName  = data.clinicName || '';
-      deletedIds  = data.deletedIds || { meds: [], patients: [] };
+      deletedIds  = Object.assign({ meds: [], patients: [], visits: [], owners: [] }, data.deletedIds || {});
       // Migrate old localStorage data into IDB if IDB is empty but LS has data
       if (!meds.length) migrateFromLS();
       updateStorageBadge(true);
@@ -1766,7 +2026,8 @@ async function loadData() {
 function migrateFromLS() {
   const ver = parseInt(localStorage.getItem('vetdose_schema_ver') || '1');
   if (ver < 2) {
-    const old = JSON.parse(localStorage.getItem('vetdose_meds') || '[]');
+    let old = [];
+    try { old = JSON.parse(localStorage.getItem('vetdose_meds') || '[]'); } catch(e) { old = []; }
     if (old.length) meds = migrateV1ToV2(old);
   } else {
     try { const s = localStorage.getItem('vetdose_meds_v2'); if (s) meds = JSON.parse(s).map(ensureV3Fields); } catch(e){ meds=[]; }
@@ -1817,12 +2078,37 @@ function ensureV3Fields(m) {
     if (r.maxDose === undefined) r.maxDose = null;
     return r;
   });
+  // Backfill sync metadata for records created before Phase 2 (multi-doctor sync)
+  if (!m.updatedAt) m.updatedAt = m.createdAt || new Date(0).toISOString();
+  if (!m.updatedBy) m.updatedBy = m.updatedBy || 'legacy';
+  if (!m.clinicId) m.clinicId = clinicId || m.clinicId;
   return m;
+}
+
+// Backfill sync metadata for patient + nested visit records
+function ensurePatientSyncFields(p) {
+  if (!p.updatedAt) p.updatedAt = p.createdAt || new Date(0).toISOString();
+  if (!p.updatedBy) p.updatedBy = p.updatedBy || 'legacy';
+  if (!p.clinicId) p.clinicId = clinicId || p.clinicId;
+  p.visits = (p.visits || []).map(v => {
+    if (!v.updatedAt) v.updatedAt = v.createdAt || p.updatedAt;
+    if (!v.updatedBy) v.updatedBy = v.updatedBy || p.updatedBy;
+    return v;
+  });
+  return p;
+}
+
+function ensureOwnerSyncFields(o) {
+  if (!o.updatedAt) o.updatedAt = new Date(0).toISOString();
+  if (!o.updatedBy) o.updatedBy = o.updatedBy || 'legacy';
+  if (!o.clinicId) o.clinicId = clinicId || o.clinicId;
+  return o;
 }
 
 function runMigration(manual=false) {
   const ver = parseInt(localStorage.getItem('vetdose_schema_ver')||'1');
-  const oldMeds = JSON.parse(localStorage.getItem('vetdose_meds')||'[]');
+  let oldMeds = [];
+  try { oldMeds = JSON.parse(localStorage.getItem('vetdose_meds')||'[]'); } catch(e) { oldMeds = []; }
   if (ver < 2 && oldMeds.length) {
     meds = migrateV1ToV2(oldMeds);
     save();
@@ -1937,7 +2223,13 @@ function openVDPModal(parsed, filename) {
   const eff = newOnes.length;
   document.getElementById('vdp-merge-btn').textContent =
     eff === 0 ? '✓ Nothing new to merge' : `⊕ Merge ${eff} new medication${eff !== 1 ? 's' : ''}`;
-  document.getElementById('vdp-modal').classList.add('show');
+  pushPage({
+    id: 'vdp-modal',
+    label: 'Import Package',
+    tab: 'settings',
+    show() { document.getElementById('vdp-modal').classList.add('show'); },
+    hide() { document.getElementById('vdp-modal').classList.remove('show'); pendingVDPMeds = null; }
+  });
 }
 
 function commitVDPImport() {
@@ -1947,17 +2239,17 @@ function commitVDPImport() {
   let added = 0;
   for (const m of pendingVDPMeds) {
     if (existIds.has(m.id)) continue;
-    meds.push(existNames.has(m.name.toLowerCase()) ? { ...m, id: uid(), name: m.name + ' (imported)' } : m);
+    const newMed = existNames.has(m.name.toLowerCase()) ? { ...m, id: uid(), name: m.name + ' (imported)' } : m;
+    meds.push(stampRecord(newMed, 'meds', newMed.id));
     added++;
   }
   save(); updateStats(); renderMedList(); renderCalcList();
-  closeVDPModal();
+  popPage();
   toast(added === 0 ? 'All medications already in your database' : `✅ Merged ${added} medication${added!==1?'s':''}`, added===0?'warn':'success');
 }
 
 function closeVDPModal() {
-  document.getElementById('vdp-modal').classList.remove('show');
-  pendingVDPMeds = null;
+  popPage();
 }
 
 // ─── DRAG & DROP .vdp ────────────────────────────────────
@@ -2121,6 +2413,7 @@ function checkInteractions(currentMedId) {
 function saveDoctorName() {
   doctorName = document.getElementById('setting-doctor-name').value.trim();
   updateDoctorDisplay();
+  touchDoctorRegistry();
   save();
 }
 
@@ -2142,7 +2435,67 @@ function updateDoctorDisplay() {
 }
 
 // ─── ROUTING ─────────────────────────────────────────────
-function showPage(name) {
+// ─── APP NAVIGATION STACK (Phase 4) ────────────────────────
+// Gives "action screens" (calculators, detail views) real Back/Exit semantics
+// instead of ad-hoc inline back-arrows, and makes the browser/hardware back
+// button behave correctly instead of leaving the app or doing nothing.
+// Each stack entry: { id, label, tab, show(), hide() }
+//   - show()/hide() toggle whatever DOM this screen needs.
+//   - tab is the bottom-nav tab this screen lives under, used by Exit.
+let navStack = [];
+let _navPopStateGuard = false; // avoids re-pushing history state while we're the ones popping it
+
+function pushPage(entry) {
+  navStack.push(entry);
+  entry.show();
+  renderNavHeader();
+  if (!_navPopStateGuard) {
+    try { history.pushState({ vdNavDepth: navStack.length }, ''); } catch(e) {}
+  }
+}
+
+function popPage() {
+  if (!navStack.length) return false;
+  const entry = navStack.pop();
+  entry.hide();
+  if (navStack.length) navStack[navStack.length - 1].show();
+  renderNavHeader();
+  return true;
+}
+
+// Exit drops the entire stack at once and returns to the underlying tab —
+// distinct from Back, which only undoes one level.
+function exitToTab() {
+  const tab = navStack.length ? navStack[0].tab : null;
+  while (navStack.length) { const e = navStack.pop(); e.hide(); }
+  renderNavHeader();
+  showPage(tab || 'calc');
+}
+
+function renderNavHeader() {
+  const bar = document.getElementById('app-nav-header');
+  const title = document.getElementById('app-nav-title');
+  if (!bar) return;
+  const top = navStack[navStack.length - 1];
+  bar.style.display = top ? 'flex' : 'none';
+  if (title) title.textContent = top?.label || '';
+}
+
+// Map browser/hardware back to popPage() while any screen is pushed, so the
+// user never accidentally backs all the way out of the app from a calculator.
+window.addEventListener('popstate', () => {
+  if (navStack.length) {
+    _navPopStateGuard = true;
+    popPage();
+    _navPopStateGuard = false;
+  }
+});
+
+// The actual DOM tab-switch, with no opinion about the nav stack — used both
+// by showPage() (which clears the stack first) and by pushed screens like
+// patient-detail (which manage the stack themselves and must NOT clear it
+// when they show/hide their underlying tab).
+function showTabRaw(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-'+name)?.classList.add('active');
@@ -2162,6 +2515,83 @@ function showPage(name) {
     const headerSub = document.getElementById('header-version-sub');
     if (headerSub) headerSub.textContent = 'Dosage Calculator v5.0';
   }
+}
+
+function closePatientModal() {
+  document.getElementById('patient-modal').classList.remove('show');
+  editingPatientId = null;
+}
+function closeVisitModal() {
+  document.getElementById('visit-modal').classList.remove('show');
+  editingVisitId = null;
+}
+function closeOwnerModal() {
+  document.getElementById('owner-modal').classList.remove('show');
+  editingOwnerId = null;
+}
+function closeVisitPickerModal() {
+  document.getElementById('visit-picker-modal').classList.remove('show');
+}
+// visitPickerNewVisit()/visitPickerNewVisitFluid() are reachable two ways:
+// with the picker sheet already pushed (user tapped "Start a New Visit"), or
+// having skipped it entirely (no visits today, jump straight to a blank
+// visit). Only pop if the picker is actually the thing on top of the stack.
+function popVisitPickerIfOpen() {
+  if (navStack.length && navStack[navStack.length - 1].id === 'visit-picker-modal') popPage();
+}
+
+// ─── ESCAPE-KEY SAFETY NET FOR MODALS (Phase 4 audit) ──────
+// Every editing screen (meds, patients, visits, owners, VDP import, custom
+// Rx, visit picker) now opens as a full page via the push/pop nav stack
+// above. Escape mirrors Back/Cancel for whichever one is on top. Only
+// confirm-modal and sync-choice-modal stay as compact promise-based dialogs
+// (quick yes/no decisions, not editing screens) — see closeTopModal() below.
+const MODAL_IDS = ['vdp-modal','med-modal','patient-modal','owner-modal','visit-modal',
+  'sync-choice-modal','visit-picker-modal','custom-rx-modal','confirm-modal'];
+
+function topOpenModalId() {
+  // confirm-modal renders above everything else (z-index:500) so it takes priority
+  const ordered = ['confirm-modal', ...MODAL_IDS.filter(id => id !== 'confirm-modal')];
+  for (const id of ordered) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('show')) return id;
+  }
+  return null;
+}
+
+// Dedicated close handlers per modal id (falls back to a plain classList
+// removal for modals — like vdp/sync-choice/visit-picker/custom-rx — that
+// don't carry any "editing an existing record" state to reset).
+// Modals that are managed by the push/pop nav stack — Escape should pop the
+// stack (which runs their hide()/cleanup) rather than just hiding them.
+const STACK_MODAL_IDS = ['med-modal','patient-modal','visit-modal','owner-modal',
+  'vdp-modal','custom-rx-modal','visit-picker-modal'];
+
+function closeTopModal() {
+  const id = topOpenModalId();
+  if (!id) return false;
+  // confirm-modal and sync-choice-modal are promise-based dialogs (see
+  // confirmDialog/_confirmResolve and syncChoiceDialog/_syncChoiceResolve) —
+  // they must be resolved, not just hidden, or the caller awaiting them hangs forever.
+  if (id === 'confirm-modal') { confirmResolve(null); return true; }
+  if (id === 'sync-choice-modal') { syncChoiceResolve(null); return true; }
+  if (STACK_MODAL_IDS.includes(id)) { popPage(); return true; }
+  document.getElementById(id).classList.remove('show');
+  return true;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeTopModal();
+});
+
+function showPage(name) {
+  // Switching tabs directly (bottom nav, etc.) should drop any pushed screen
+  // from the previous tab rather than leaving it stacked underneath.
+  if (navStack.length) {
+    while (navStack.length) { const e = navStack.pop(); e.hide(); }
+    renderNavHeader();
+  }
+  showTabRaw(name);
 }
 
 function loadSettingsUI() {
@@ -2464,6 +2894,7 @@ function clearCalcSelection() {
   selectedMed = null; selectedRoute = null; selectedCase = null; selectedConc = null; calcSpecies = null;
   document.getElementById('calc-selected-chip').style.display = 'none';
   document.getElementById('calc-form-inner').style.display = 'none';
+  document.getElementById('calc-drug-menu').style.display = 'block';
   document.getElementById('result-box').classList.remove('show');
   document.getElementById('calc-search').value = '';
   document.getElementById('calc-med-list').style.display = 'none';
@@ -2539,6 +2970,20 @@ function selectMed(id) {
   document.getElementById('route-field').style.display='none';
   document.getElementById('case-field').style.display='none';
   document.getElementById('conc-field').style.display='none';
+
+  // Open the dosing form as its own page — Back/Exit return to the drug
+  // search/list instead of everything being stacked in one long scroll.
+  pushPage({
+    id: 'drug-calc-form',
+    label: selectedMed.name,
+    tab: 'calc',
+    show() {
+      document.getElementById('calc-drug-menu').style.display = 'none';
+      document.getElementById('calc-selected-chip').style.display = 'block';
+      document.getElementById('calc-form-inner').style.display = 'block';
+    },
+    hide() { clearCalcForm(); }
+  });
   setTimeout(()=>document.getElementById('calc-card')?.scrollIntoView({behavior:'smooth',block:'start'}), 50);
 }
 
@@ -2856,14 +3301,14 @@ function saveCalcToPatient() {
         </div>
       </div>`;
     }).join('');
-    document.getElementById('visit-picker-modal').classList.add('show');
+    pushPage({ id:'visit-picker-modal', label:'Save to Patient', tab:'calc', show(){ document.getElementById('visit-picker-modal').classList.add('show'); }, hide: closeVisitPickerModal });
   } else {
     // No visits today — go straight to new visit modal
     visitPickerNewVisit();
   }
 }
 
-function visitPickerAppend(vid) {
+function visitPickerAppendCore(vid) {
   // Append drug line to existing visit's Plan drugs field silently
   const pat = patients.find(x => x.id === _pendingPatientId);
   if (!pat) return;
@@ -2879,14 +3324,16 @@ function visitPickerAppend(vid) {
     if (!visit.soap.o) visit.soap.o = {};
     visit.soap.o.weight = _pendingWeight.toString();
   }
+  stampRecord(visit, 'visits', pat.id + ':' + visit.id);
+  stampRecord(pat, 'patients', pat.id);
 
   savePatients();
-  document.getElementById('visit-picker-modal').classList.remove('show');
+  popPage();
   toast('✅ Drug added to visit', 'success');
 }
 
 function visitPickerNewVisit() {
-  document.getElementById('visit-picker-modal').classList.remove('show');
+  popVisitPickerIfOpen();
   // Open visit modal pre-filled
   currentVisitPatientId = _pendingPatientId;
   editingVisitId = null;
@@ -2896,7 +3343,7 @@ function visitPickerNewVisit() {
   setVal('vm-date', new Date().toISOString().slice(0,10));
   setVal('p-drugs', _pendingDrugLine);
   setVal('o-weight', _pendingWeight.toString());
-  document.getElementById('visit-modal').classList.add('show');
+  pushPage({ id:'visit-modal', label:'New Visit', tab:'calc', show(){ document.getElementById('visit-modal').classList.add('show'); }, hide: closeVisitModal });
   switchVisitModalTab('plan');
   toast('Pre-filled drug in Plan tab', 'success');
 }
@@ -2965,7 +3412,7 @@ function openAddModal() {
   document.getElementById('route-entries').innerHTML='';
   renderModalDrugContraChips();
   addRouteEntry();
-  document.getElementById('med-modal').classList.add('show');
+  pushPage({ id:'med-modal', label:'Add Medication', tab:'meds', show(){ document.getElementById('med-modal').classList.add('show'); }, hide: closeModal });
 }
 
 function openEditModal(id) {
@@ -2979,7 +3426,7 @@ function openEditModal(id) {
   document.getElementById('route-entries').innerHTML='';
   if (m.routes?.length) m.routes.forEach(r=>addRouteEntry(r)); else addRouteEntry();
   renderModalDrugContraChips();
-  document.getElementById('med-modal').classList.add('show');
+  pushPage({ id:'med-modal', label:'Edit Medication', tab:'meds', show(){ document.getElementById('med-modal').classList.add('show'); }, hide: closeModal });
 }
 
 function renderModalDrugContraChips() {
@@ -3045,6 +3492,7 @@ function removeDrugContra(id) {
 function closeModal() {
   document.getElementById('med-modal').classList.remove('show');
   document.getElementById('drug-pick-list').classList.remove('open');
+  editingId = null;
 }
 
 function addRouteEntry(existing) {
@@ -3114,6 +3562,7 @@ function caseRowHTML(c) {
 
 function addCaseRow(routeEntryId) {
   const entry = document.querySelector(`.route-entry[data-route-id="${routeEntryId}"]`);
+  if (!entry) return;
   entry.querySelector('.re-cases').insertAdjacentHTML('beforeend', caseRowHTML({id:uid(),label:'',dose:''}));
 }
 
@@ -3131,6 +3580,7 @@ function removeRouteEntry(id) {
 
 function toggleReSpecies(btn, s, routeEntryId) {
   const entry = document.querySelector(`.route-entry[data-route-id="${routeEntryId}"]`);
+  if (!entry) return;
   entry.querySelectorAll('.re-species-toggle .species-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -3172,13 +3622,14 @@ function saveMed() {
   }
   if (editingId) {
     const idx = meds.findIndex(m=>m.id===editingId);
-    meds[idx]={...meds[idx],name,brand:brand||undefined,contraindications,drugContraIds,drugContraReasons,notes,routes};
+    meds[idx]=stampRecord({...meds[idx],name,brand:brand||undefined,contraindications,drugContraIds,drugContraReasons,notes,routes}, 'meds', editingId);
     toast('✅ Medication updated');
   } else {
-    meds.push({id:uid(),name,brand:brand||undefined,contraindications,drugContraIds,drugContraReasons,notes,routes});
+    const newId = uid();
+    meds.push(stampRecord({id:newId,name,brand:brand||undefined,contraindications,drugContraIds,drugContraReasons,notes,routes}, 'meds', newId));
     toast('✅ Medication added');
   }
-  save(); closeModal(); renderMedList(); renderCalcList();
+  save(); popPage(); renderMedList(); renderCalcList();
 }
 
 async function deleteMed(id) {
@@ -3262,7 +3713,7 @@ function renderHistory() {
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <div class="patient-group-meta">${lastDate}</div>
-          ${!isAnon?`<div style="display:flex;gap:5px"><button class="btn-xs btn-secondary" style="color:var(--muted)" onclick="clearPatientHistory('${patKey.replace(/'/g,"\\'")}',${entries.length});event.stopPropagation()">Clear</button><button class="btn-xs btn-danger" onclick="deletePatient('${patKey.replace(/'/g,"\\'")}');event.stopPropagation()">Delete</button></div>`:''}
+          ${!isAnon?`<div style="display:flex;gap:5px"><button class="btn-xs btn-secondary" style="color:var(--muted)" onclick="clearPatientHistory('${patKey.replace(/'/g,"\\'")}',${entries.length});event.stopPropagation()">Clear</button><button class="btn-xs btn-danger" onclick="deleteLegacyHistoryPatient('${patKey.replace(/'/g,"\\'")}');event.stopPropagation()">Delete</button></div>`:''}
         </div>
       </div>
       <div class="patient-group-body">${itemsHTML}</div>
@@ -3276,16 +3727,27 @@ function togglePatientGroup(header) {
   body.style.display = header.classList.contains('collapsed') ? 'none' : '';
 }
 
-async function deletePatient(patientId) {
+// Calc history is merged as an append-only log during cloud sync (see BUGS.md) —
+// there's no deletion tombstone for it, so a clinic-connected device can see a
+// "deleted" record reappear from the cloud copy on the next sync. Rather than
+// reworking that merge (higher risk for a lower-stakes data type), we disclose
+// the behavior in the delete confirmations so it isn't a silent surprise.
+function historySyncWarningSuffix() {
+  return (ghToken && ghGistId)
+    ? ' Note: this device is connected to cloud sync, and calculation history syncs as an append-only log — if another doctor\'s copy still has these records, they may reappear here on the next sync.'
+    : '';
+}
+
+async function deleteLegacyHistoryPatient(patientId) {
   const count = calcHistory.filter(h => (h.patientId||'') === patientId).length;
-  if (!await confirmDialog('Delete Patient Records', `Remove all ${count} record${count!==1?'s':''} for "${patientId}"? This cannot be undone.`, '🗑️ Delete')) return;
+  if (!await confirmDialog('Delete Patient Records', `Remove all ${count} record${count!==1?'s':''} for "${patientId}"? This cannot be undone.${historySyncWarningSuffix()}`, '🗑️ Delete')) return;
   calcHistory = calcHistory.filter(h => (h.patientId||'') !== patientId);
   save(); renderHistory();
   toast(`🗑️ Deleted records for ${patientId}`);
 }
 
 async function clearPatientHistory(patientId, count) {
-  if (!await confirmDialog('Clear Patient History', `Clear all ${count} calculation record${count!==1?'s':''} for "${patientId}"? The patient name will be removed from history but no medications are deleted.`, '🧹 Clear History')) return;
+  if (!await confirmDialog('Clear Patient History', `Clear all ${count} calculation record${count!==1?'s':''} for "${patientId}"? The patient name will be removed from history but no medications are deleted.${historySyncWarningSuffix()}`, '🧹 Clear History')) return;
   calcHistory = calcHistory.filter(h => (h.patientId||'') !== patientId);
   save(); renderHistory();
   toast(`🧹 Cleared history for ${patientId}`);
@@ -3306,14 +3768,14 @@ async function pruneInactivePatients() {
   const toDelete = Object.entries(latestByPatient).filter(([,t]) => t < threshold).map(([k])=>k);
 
   if (!toDelete.length) { toast('No inactive patients to remove (all active within 1 year)', 'warn'); return; }
-  if (!await confirmDialog('Delete Inactive Patients', `Remove all records for ${toDelete.length} patient${toDelete.length!==1?'s':''} with no data in over 1 year?\n\nPatients: ${toDelete.join(', ')}`, '🗑️ Delete Inactive')) return;
+  if (!await confirmDialog('Delete Inactive Patients', `Remove all records for ${toDelete.length} patient${toDelete.length!==1?'s':''} with no data in over 1 year?\n\nPatients: ${toDelete.join(', ')}${historySyncWarningSuffix()}`, '🗑️ Delete Inactive')) return;
   calcHistory = calcHistory.filter(h => !h.patientId || !toDelete.includes(h.patientId));
   save(); renderHistory();
   toast(`🗑️ Removed ${toDelete.length} inactive patient${toDelete.length!==1?'s':''}`);
 }
 
 async function clearHistory() {
-  if (!await confirmDialog('Clear All History', 'Delete every calculation record? This cannot be undone.', '🗑️ Clear All')) return;
+  if (!await confirmDialog('Clear All History', `Delete every calculation record? This cannot be undone.${historySyncWarningSuffix()}`, '🗑️ Clear All')) return;
   calcHistory=[];
   await save();
   renderHistory(); toast('History cleared');
@@ -3355,10 +3817,28 @@ function importData(e) {
 }
 
 async function clearAll() {
-  if(!await confirmDialog('Clear All Data', 'This will delete ALL medications, patients, history, and settings. Cannot be undone.', '🗑️ Delete Everything')) return;
+  const syncActive = !!(ghToken && ghGistId);
+  const warning = syncActive
+    ? 'This will delete ALL medications, patients, history, and settings — and because this device is connected to cloud sync, that deletion will also propagate to every other doctor in this clinic on their next sync. Cannot be undone. If you only meant to reset this device, disconnect sync first (Settings → GitHub Cloud Sync → Reset).'
+    : 'This will delete ALL medications, patients, history, and settings. Cannot be undone.';
+  if(!await confirmDialog('Clear All Data', warning, '🗑️ Delete Everything')) return;
+  // Tombstone everything being wiped so a connected clinic's next sync
+  // treats this as an intentional deletion instead of silently restoring
+  // it from the cloud copy (see BUGS.md — this used to reset deletedIds
+  // to empty, which meant "Clear All Data" didn't actually stay cleared).
+  meds.forEach(m => { if (!deletedIds.meds.includes(m.id)) deletedIds.meds.push(m.id); });
+  patients.forEach(p => {
+    if (!deletedIds.patients.includes(p.id)) deletedIds.patients.push(p.id);
+    (p.visits||[]).forEach(v => {
+      const key = p.id + ':' + v.id;
+      if (!deletedIds.visits.includes(key)) deletedIds.visits.push(key);
+    });
+  });
+  owners.forEach(o => { if (!deletedIds.owners.includes(o.id)) deletedIds.owners.push(o.id); });
+
   meds=[]; calcHistory=[]; patients=[]; owners=[];
   sessions=[{id:uid(),label:'Patient 1',patientId:null,drugIds:[]}]; activeSessionIdx=0;
-  doctorName=''; clinicName=''; deletedIds={ meds:[], patients:[] };
+  doctorName=''; clinicName='';
   // Wipe IDB directly
   if (db) {
     try {
@@ -4485,7 +4965,7 @@ function addFromLibrary(lid) {
     })).filter(r=>r.cases.length>0)
   };
   if (!newMed.routes.length) { toast('Drug has no dosing data — add manually','warn'); return; }
-  meds.push(newMed);
+  meds.push(stampRecord(newMed, 'meds', newMed.id));
   linkLibraryDrugContras();
   save(); renderMedList(); renderCalcList();
   renderLibrary(); // refresh added states
@@ -4493,7 +4973,7 @@ function addFromLibrary(lid) {
 }
 
 function _libMedFromEntry(d) {
-  return {
+  const m = {
     id: uid(), libId: d.lid,
     name: d.name,
     brand: d.brand||undefined,
@@ -4510,6 +4990,7 @@ function _libMedFromEntry(d) {
       cases: r.cases.map(c=>({id:uid(),label:c.label,dose:c.dose,freq:c.freq||undefined}))
     })).filter(r=>r.cases.length>0)
   };
+  return stampRecord(m, 'meds', m.id);
 }
 
 // ─── DRUG-DRUG CONTRAINDICATION AUTO-LINKING ──────────────
@@ -4678,6 +5159,8 @@ async function loadPatients() {
     try { const s = localStorage.getItem('vetdose_patients'); patients = s ? JSON.parse(s) : []; } catch(e) { patients=[]; }
     try { const s = localStorage.getItem('vetdose_owners'); owners = s ? JSON.parse(s) : []; } catch(e) { owners=[]; }
   }
+  patients = patients.map(ensurePatientSyncFields);
+  owners = owners.map(ensureOwnerSyncFields);
 }
 
 function copyPid(pid) {
@@ -4979,6 +5462,23 @@ function renderFollowupBanner() {
 
 // ─── PATIENT DETAIL ──────────────────────────────────────
 function openPatientDetail(pid) {
+  renderPatientDetailContent(pid);
+  const p = patients.find(x => x.id === pid);
+  if (!p) return;
+
+  pushPage({
+    id: 'patient-detail-' + pid,
+    label: p.name || 'Patient',
+    tab: 'patients',
+    show() { showTabRaw('patient-detail'); },
+    hide() { showTabRaw('patients'); }
+  });
+}
+
+// Re-renders the patient detail content in place without touching the nav
+// stack — used when we're already on this screen (e.g. after saving an edit
+// made from within it) and just need to refresh what's on screen.
+function renderPatientDetailContent(pid) {
   const p = patients.find(x => x.id === pid);
   if (!p) return;
   const el = document.getElementById('patient-detail-content');
@@ -5125,8 +5625,6 @@ function openPatientDetail(pid) {
   // Update page header
   const headerSub = document.getElementById('header-version-sub');
   if (headerSub) headerSub.textContent = p.name + ' · ' + (p.species||'');
-
-  showPage('patient-detail');
 }
 
 function infoRow(label, val) {
@@ -5235,42 +5733,8 @@ function attachIcon(t) {
 }
 
 // ─── PATIENT MODAL ───────────────────────────────────────
-function openNewPatientModal() {
-  editingPatientId = null;
-  document.getElementById('patient-modal-title').textContent = 'New Patient';
-  clearPatientModal();
-  // Default date for this visit
-  document.getElementById('patient-modal').classList.add('show');
-  switchPatientModalTab('info');
-}
-
-function openEditPatientModal(pid) {
-  const p = patients.find(x => x.id === pid);
-  if (!p) return;
-  editingPatientId = pid;
-  document.getElementById('patient-modal-title').textContent = 'Edit Patient';
-  // Fill fields
-  setVal('pm-name', p.name||'');
-  setVal('pm-species', p.species||'dog');
-  setVal('pm-sex', p.sex||'male');
-  setVal('pm-breed', p.breed||'');
-  setVal('pm-age', p.age||'');
-  setVal('pm-weight', p.weight||'');
-  setVal('pm-color', p.color||'');
-  setVal('pm-chip', p.chip||'');
-  setVal('pm-owner-name', p.ownerName||'');
-  setVal('pm-owner-phone', p.ownerPhone||'');
-  setVal('pm-owner-address', p.ownerAddress||'');
-  setVal('pm-owner-notes', p.ownerNotes||'');
-  setVal('pm-prev-diseases', p.prevDiseases||'');
-  setVal('pm-current-meds', p.currentMeds||'');
-  setVal('pm-allergies', p.allergies||'');
-  // Load vaccine records into temp array for the vaccines tab
-  tempPatientVaccs = JSON.parse(JSON.stringify(p.vaccineRecords || []));
-  renderPatientVaccRows();
-  document.getElementById('patient-modal').classList.add('show');
-  switchPatientModalTab('info');
-}
+// (openNewPatientModal / openEditPatientModal are defined below, near
+// owner-linking support — see openNewPatientModalWithOwner section)
 
 function clearPatientModal() {
   ['pm-name','pm-breed','pm-age','pm-weight','pm-color','pm-chip',
@@ -5292,48 +5756,7 @@ function switchPatientModalTab(tab) {
   if (tab === 'vaccines') renderPatientVaccRows();
 }
 
-function savePatient() {
-  const name = gv('pm-name').trim();
-  if (!name) { toast('Please enter the pet name', 'error'); return; }
-  const selectedOwnerId = document.getElementById('pm-owner-select')?.value || null;
-  const isNew = !editingPatientId;
-  const p = {
-    id: editingPatientId || uid(),
-    pid: null, // set below
-    name, species: gv('pm-species'), sex: gv('pm-sex'),
-    breed: gv('pm-breed'), age: gv('pm-age'),
-    ownerId: selectedOwnerId || null,
-    weight: gv('pm-weight') ? parseFloat(gv('pm-weight')) : null,
-    color: gv('pm-color'), chip: gv('pm-chip'),
-    ownerName: gv('pm-owner-name'), ownerPhone: gv('pm-owner-phone'),
-    ownerAddress: gv('pm-owner-address'), ownerNotes: gv('pm-owner-notes'),
-    prevDiseases: gv('pm-prev-diseases'),
-    vaccineRecords: tempPatientVaccs.filter(v => v.name || v.date),
-    currentMeds: gv('pm-current-meds'), allergies: gv('pm-allergies'),
-    visits: [], createdAt: new Date().toISOString()
-  };
-  if (editingPatientId) {
-    const existing = patients.find(x => x.id === editingPatientId);
-    if (existing) {
-      p.visits = existing.visits || [];
-      p.createdAt = existing.createdAt;
-      p.pid = existing.pid || generatePatientId(name, p.species); // keep existing pid
-    }
-    const idx = patients.findIndex(x => x.id === editingPatientId);
-    if (idx >= 0) patients[idx] = p; else patients.push(p);
-    toast('✅ Patient updated');
-  } else {
-    p.pid = generatePatientId(name, p.species);
-    patients.push(p);
-    toast(`✅ Patient added · ID: ${p.pid}`);
-  }
-  savePatients();
-  document.getElementById('patient-modal').classList.remove('show');
-  renderPatientList();
-  if (document.getElementById('page-patient-detail').classList.contains('active')) {
-    openPatientDetail(p.id);
-  }
-}
+// (savePatient is defined below, near owner auto-create support)
 
 async function deletePatient(pid) {
   const p = patients.find(x => x.id === pid);
@@ -5346,7 +5769,7 @@ async function deletePatient(pid) {
   savePatients();
   save(); // persist deletedIds
   renderPatientList();
-  if (document.getElementById('page-patient-detail').classList.contains('active')) showPage('patients');
+  if (document.getElementById('page-patient-detail').classList.contains('active')) exitToTab();
   toast('Patient deleted', 'warn');
 }
 
@@ -5359,7 +5782,7 @@ function openNewVisitModal(pid) {
   // Default today
   const today = new Date().toISOString().slice(0,10);
   setVal('vm-date', today);
-  document.getElementById('visit-modal').classList.add('show');
+  pushPage({ id:'visit-modal', label:'New Visit', tab:'patients', show(){ document.getElementById('visit-modal').classList.add('show'); }, hide: closeVisitModal });
   switchVisitModalTab('basics');
 }
 
@@ -5400,7 +5823,7 @@ function openEditVisitModal(pid, vid) {
   setVal('p-drugs',p2.drugs||''); setVal('p-fluids',p2.fluids||''); setVal('p-diagnostics',p2.diagnostics||'');
   // Follow-up
   setVal('vm-recheck-date', v.recheckDate||''); setVal('vm-recheck-reason', v.recheckReason||'');
-  document.getElementById('visit-modal').classList.add('show');
+  pushPage({ id:'visit-modal', label:'Edit Visit', tab:'patients', show(){ document.getElementById('visit-modal').classList.add('show'); }, hide: closeVisitModal });
   switchVisitModalTab('basics');
 }
 
@@ -5468,8 +5891,9 @@ function saveVisit() {
     },
     attachments: editingVisitId ? ((p.visits.find(v=>v.id===editingVisitId)||{}).attachments||[]) : [],
     vaccines: collectVaccineRows(),
-    createdAt: new Date().toISOString()
+    createdAt: editingVisitId ? ((p.visits.find(v=>v.id===editingVisitId)||{}).createdAt || new Date().toISOString()) : new Date().toISOString()
   };
+  stampRecord(visit, 'visits', pid + ':' + visit.id);
 
   // Auto-update patient weight from visit if filled
   if (visit.soap.o.weight) p.weight = parseFloat(visit.soap.o.weight);
@@ -5482,9 +5906,11 @@ function saveVisit() {
     p.visits.push(visit);
     toast('✅ Visit saved');
   }
+  // Bumping the patient's own updatedAt keeps patient-level metadata (e.g. weight) in sync too
+  stampRecord(p, 'patients', pid);
   savePatients();
-  document.getElementById('visit-modal').classList.remove('show');
-  openPatientDetail(pid);
+  popPage();
+  renderPatientDetailContent(pid);
 }
 
 async function deleteVisit(pid, vid) {
@@ -5493,8 +5919,12 @@ async function deleteVisit(pid, vid) {
   const ok = await confirmDialog('Delete Visit', 'Delete this visit record? This cannot be undone.', '🗑 Delete');
   if (!ok) return;
   p.visits = (p.visits||[]).filter(v => v.id !== vid);
+  // Record tombstone so deletion propagates to cloud on next sync
+  const visitTombstoneKey = pid + ':' + vid;
+  if (!deletedIds.visits.includes(visitTombstoneKey)) deletedIds.visits.push(visitTombstoneKey);
   savePatients();
-  openPatientDetail(pid);
+  save(); // persist deletedIds
+  renderPatientDetailContent(pid);
   toast('Visit deleted','warn');
 }
 
@@ -5619,7 +6049,7 @@ function openNewOwnerModal() {
   editingOwnerId = null;
   document.getElementById('owner-modal-title').textContent = 'New Owner';
   ['om-name','om-phone','om-whatsapp','om-address','om-notes'].forEach(id => setVal(id,''));
-  document.getElementById('owner-modal').classList.add('show');
+  pushPage({ id:'owner-modal', label:'New Owner', tab:'patients', show(){ document.getElementById('owner-modal').classList.add('show'); }, hide: closeOwnerModal });
 }
 
 function openEditOwnerModal(oid) {
@@ -5630,7 +6060,7 @@ function openEditOwnerModal(oid) {
   setVal('om-name', o.name||''); setVal('om-phone', o.phone||'');
   setVal('om-whatsapp', o.whatsapp||''); setVal('om-address', o.address||'');
   setVal('om-notes', o.notes||'');
-  document.getElementById('owner-modal').classList.add('show');
+  pushPage({ id:'owner-modal', label:'Edit Owner', tab:'patients', show(){ document.getElementById('owner-modal').classList.add('show'); }, hide: closeOwnerModal });
 }
 
 function saveOwner() {
@@ -5643,7 +6073,7 @@ function saveOwner() {
     toast('✅ Owner updated');
   } else { owners.push(o); toast('✅ Owner added'); }
   savePatients();
-  document.getElementById('owner-modal').classList.remove('show');
+  popPage();
   renderOwnerList();
   populateOwnerDropdown();
 }
@@ -5654,7 +6084,10 @@ async function deleteOwner(oid) {
   if (!ok) return;
   owners = owners.filter(x => x.id !== oid);
   patients.forEach(p => { if (p.ownerId === oid) p.ownerId = null; });
+  // Record tombstone so deletion propagates to cloud on next sync
+  if (!deletedIds.owners.includes(oid)) deletedIds.owners.push(oid);
   savePatients();
+  save(); // persist deletedIds
   renderOwnerList();
   toast('Owner deleted','warn');
 }
@@ -5689,18 +6122,15 @@ function onOwnerSelectChange() {
 }
 
 // ─── PATIENT MODAL - populate owner dropdown on open ─────
-const _origOpenNewPatientModal = openNewPatientModal;
-// Override openNewPatientModal to also populate owners
 function openNewPatientModal() {
   editingPatientId = null;
   document.getElementById('patient-modal-title').textContent = 'New Patient';
   clearPatientModal();
   populateOwnerDropdown();
-  document.getElementById('patient-modal').classList.add('show');
+  pushPage({ id:'patient-modal', label:'New Patient', tab:'patients', show(){ document.getElementById('patient-modal').classList.add('show'); }, hide: closePatientModal });
   switchPatientModalTab('info');
 }
 
-const _origOpenEditPatientModal = openEditPatientModal;
 function openEditPatientModal(pid) {
   const p = patients.find(x => x.id === pid);
   if (!p) return;
@@ -5718,12 +6148,11 @@ function openEditPatientModal(pid) {
   renderPatientVaccRows();
   populateOwnerDropdown();
   if (p.ownerId) { setVal('pm-owner-select', p.ownerId); onOwnerSelectChange(); }
-  document.getElementById('patient-modal').classList.add('show');
+  pushPage({ id:'patient-modal', label:'Edit Patient', tab:'patients', show(){ document.getElementById('patient-modal').classList.add('show'); }, hide: closePatientModal });
   switchPatientModalTab('info');
 }
 
 // ─── savePatient - update to link/create owner ────────────
-const _origSavePatient = savePatient;
 function savePatient() {
   const name = gv('pm-name').trim();
   if (!name) { toast('Please enter the pet name', 'error'); return; }
@@ -5734,7 +6163,7 @@ function savePatient() {
   const ownerName = gv('pm-owner-name').trim();
   if (!ownerId && ownerName) {
     const newOwner = { id: uid(), name: ownerName, phone: gv('pm-owner-phone'), whatsapp: gv('pm-owner-whatsapp'), address: gv('pm-owner-address'), notes: gv('pm-owner-notes') };
-    owners.push(newOwner);
+    owners.push(stampRecord(newOwner, 'owners', newOwner.id));
     ownerId = newOwner.id;
   }
 
@@ -5753,6 +6182,7 @@ function savePatient() {
     currentMeds: gv('pm-current-meds'), allergies: gv('pm-allergies'),
     visits: [], createdAt: new Date().toISOString()
   };
+  stampRecord(p, 'patients', p.id);
   if (editingPatientId) {
     const existing = patients.find(x => x.id === editingPatientId);
     if (existing) { p.visits = existing.visits || []; p.createdAt = existing.createdAt; p.pid = existing.pid || generatePatientId(name, p.species); }
@@ -5761,9 +6191,9 @@ function savePatient() {
     toast('✅ Patient updated');
   } else { p.pid = generatePatientId(name, p.species); patients.push(p); toast('✅ Patient added'); }
   savePatients();
-  document.getElementById('patient-modal').classList.remove('show');
+  popPage();
   renderPatientList();
-  if (document.getElementById('page-patient-detail').classList.contains('active')) openPatientDetail(p.id);
+  if (document.getElementById('page-patient-detail').classList.contains('active')) renderPatientDetailContent(p.id);
 }
 
 // ─── VACCINE MODULE ───────────────────────────────────────
@@ -5961,6 +6391,49 @@ function loadGitHubSettings() {
     setVal('gh-token', ghToken);
     setVal('gh-gist-id', ghGistId);
   } catch(e) {}
+  refreshClinicModeUI();
+}
+
+// ─── CLINIC SETUP MODE (New vs Join) ───────────────────────
+// Purely a UI affordance: "New Clinic" hides the Gist ID field (it's auto-created
+// on first sync) and explains that others will join via the ID you get afterward.
+// "Join Clinic" surfaces the Gist ID field so a colleague can paste in the ID
+// they were given, while making clear their token stays their own.
+function setClinicSetupMode(mode) {
+  try { localStorage.setItem('vd_clinic_mode', mode); } catch(e) {}
+  refreshClinicModeUI(mode);
+}
+
+function refreshClinicModeUI(mode) {
+  mode = mode || localStorage.getItem('vd_clinic_mode') || (ghGistId ? 'join' : 'new');
+  const newBtn = document.getElementById('clinic-mode-new-btn');
+  const joinBtn = document.getElementById('clinic-mode-join-btn');
+  const help = document.getElementById('clinic-mode-help');
+  const gistField = document.getElementById('gh-gist-id-field');
+  const shareRow = document.getElementById('clinic-share-row');
+  if (!newBtn || !joinBtn) return;
+  const activeStyle = 'flex:1;border:2px solid var(--accent);background:rgba(74,240,176,0.1);color:var(--accent);font-weight:800';
+  const inactiveStyle = 'flex:1;border:2px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:800';
+  newBtn.style.cssText = mode === 'new' ? activeStyle : inactiveStyle;
+  joinBtn.style.cssText = mode === 'join' ? activeStyle : inactiveStyle;
+  if (mode === 'new') {
+    if (help) help.textContent = "Setting up a brand-new clinic: enter your GitHub token and leave the Gist ID blank — it's created automatically on first sync. Afterwards, share the Clinic Gist ID below with any colleague who wants to join.";
+    if (gistField) gistField.style.display = ghGistId ? 'block' : 'none';
+  } else {
+    if (help) help.textContent = 'Ask the doctor who set up the clinic for their Clinic Gist ID and paste it in below. Use your own GitHub token — never share tokens, only the Gist ID.';
+    if (gistField) gistField.style.display = 'block';
+  }
+  if (shareRow) shareRow.style.display = (ghToken && ghGistId) ? 'block' : 'none';
+}
+
+async function copyGistIdToClipboard() {
+  if (!ghGistId) { toast('Not connected yet', 'error'); return; }
+  try {
+    await navigator.clipboard.writeText(ghGistId);
+    toast('✅ Clinic Gist ID copied — send it to your colleague');
+  } catch(e) {
+    toast('Copy failed — select the Gist ID field and copy manually', 'error');
+  }
 }
 
 function saveGitHubSettings() {
@@ -5998,7 +6471,8 @@ let syncInProgress = false; // prevent scheduleGistSync from re-triggering durin
 // scheduleGistSync and syncNow are defined later with local-first logic
 
 function buildGistPayload() {
-  return JSON.stringify({ version: 6, meds, calcHistory, patients, owners, doctorName, clinicName, deletedIds, syncedAt: new Date().toISOString() });
+  touchDoctorRegistry(); // refresh our own lastSeen so other doctors know we're active
+  return JSON.stringify({ version: 9, meds, calcHistory, patients, owners, doctorName, clinicName, clinicId, deletedIds, doctorRegistry, syncedAt: new Date().toISOString() });
 }
 
 function ghHeaders(extra = {}) {
@@ -6090,55 +6564,102 @@ async function fetchGistContent() {
   }
 }
 
-function mergeData(local, cloud) {
-  // ── Merge tombstone lists (union of both sides' deletions) ───
+// ─── PHASE 2: per-record last-write-wins merge ───────────────────
+// Replaces the old whole-array "local always wins" merge. Every record
+// (med / patient / visit) carries updatedAt + updatedBy, so on conflict the
+// newer edit wins — regardless of whether it came from local or cloud.
+// If both sides touched the same record within CONFLICT_WINDOW_MS by
+// *different* doctors, the discarded edit is written to the conflict log
+// instead of silently vanishing.
+function pickNewer(localRec, cloudRec, type, label, conflicts) {
+  const lt = localRec?.updatedAt ? Date.parse(localRec.updatedAt) : 0;
+  const ct = cloudRec?.updatedAt ? Date.parse(cloudRec.updatedAt) : 0;
+  const cloudWins = ct > lt;
+  const winner = cloudWins ? cloudRec : localRec;
+  const loser = cloudWins ? localRec : cloudRec;
+  const sameDoctorEdited = localRec?.updatedBy && localRec.updatedBy === cloudRec?.updatedBy;
+  if (!sameDoctorEdited && Math.abs(ct - lt) <= CONFLICT_WINDOW_MS && lt && ct) {
+    conflicts.push({
+      type, name: label,
+      keptSide: cloudWins ? 'cloud' : 'local', keptBy: winner?.updatedBy,
+      otherSide: cloudWins ? 'local' : 'cloud', otherBy: loser?.updatedBy
+    });
+  }
+  return winner;
+}
+
+function mergeDataLWW(local, cloud) {
+  const conflicts = [];
+
+  // ── Tombstones: union of both sides' deletions ──────────────────
   const localDelMeds = new Set(local.deletedIds?.meds || []);
   const cloudDelMeds = new Set(cloud.deletedIds?.meds || []);
   const allDelMeds = new Set([...localDelMeds, ...cloudDelMeds]);
   const localDelPats = new Set(local.deletedIds?.patients || []);
   const cloudDelPats = new Set(cloud.deletedIds?.patients || []);
   const allDelPats = new Set([...localDelPats, ...cloudDelPats]);
+  // Visit tombstones are keyed "patientId:visitId" (matches how visits are
+  // stamped elsewhere) since visit ids are only unique within their patient.
+  const localDelVisits = new Set(local.deletedIds?.visits || []);
+  const cloudDelVisits = new Set(cloud.deletedIds?.visits || []);
+  const allDelVisits = new Set([...localDelVisits, ...cloudDelVisits]);
+  const localDelOwners = new Set(local.deletedIds?.owners || []);
+  const cloudDelOwners = new Set(cloud.deletedIds?.owners || []);
+  const allDelOwners = new Set([...localDelOwners, ...cloudDelOwners]);
 
-  // ── Meds: merge by id, skip tombstoned ids ───────────────────
+  // ── Meds: per-record LWW ──────────────────────────────────────────
   const medMap = new Map(local.meds.filter(m => !allDelMeds.has(m.id)).map(m => [m.id, m]));
   let medsAdded = 0, medsUpdated = 0;
   for (const cm of cloud.meds) {
-    if (allDelMeds.has(cm.id)) continue; // deleted on either side
+    if (allDelMeds.has(cm.id)) continue;
     if (medMap.has(cm.id)) {
       const lm = medMap.get(cm.id);
-      const cloudNewer = cm.updatedAt && lm.updatedAt ? cm.updatedAt > lm.updatedAt : false;
-      if (cloudNewer) { medMap.set(cm.id, cm); medsUpdated++; }
+      const winner = pickNewer(lm, cm, 'Medication', cm.name || lm.name, conflicts);
+      if (winner !== lm) { medMap.set(cm.id, winner); medsUpdated++; }
     } else {
       medMap.set(cm.id, cm);
       medsAdded++;
     }
   }
 
-  // ── Patients: merge by id, skip tombstoned ──────────────────────
+  // ── Patients: per-record LWW for metadata, per-visit LWW for visits ─
   const patMap = new Map(local.patients.filter(p => !allDelPats.has(p.id)).map(p => [p.id, JSON.parse(JSON.stringify(p))]));
-  let patsAdded = 0, visitsAdded = 0;
+  let patsAdded = 0, visitsAdded = 0, visitsUpdated = 0;
   for (const cp of cloud.patients) {
-    if (allDelPats.has(cp.id)) continue; // deleted on either side
-    if (!patMap.has(cp.id)) { patMap.set(cp.id, cp); patsAdded++; }
-    else {
-      const lp = patMap.get(cp.id);
-      // Merge visits by visit id
-      const visitIds = new Set((lp.visits || []).map(v => v.id));
-      for (const cv of (cp.visits || [])) {
-        if (!visitIds.has(cv.id)) { (lp.visits = lp.visits || []).push(cv); visitsAdded++; }
-      }
-      // Update patient metadata fields if cloud is newer
-      if (cp.updatedAt && (!lp.updatedAt || cp.updatedAt > lp.updatedAt)) {
-        Object.assign(lp, cp, { visits: lp.visits }); // keep merged visits
+    if (allDelPats.has(cp.id)) continue;
+    if (!patMap.has(cp.id)) { patMap.set(cp.id, cp); patsAdded++; continue; }
+
+    const lp = patMap.get(cp.id);
+    // Merge visits by id — each visit resolved independently by its own timestamp
+    const visitMap = new Map((lp.visits || []).filter(v => !allDelVisits.has(cp.id + ':' + v.id)).map(v => [v.id, v]));
+    for (const cv of (cp.visits || [])) {
+      if (allDelVisits.has(cp.id + ':' + cv.id)) continue;
+      if (!visitMap.has(cv.id)) { visitMap.set(cv.id, cv); visitsAdded++; }
+      else {
+        const lv = visitMap.get(cv.id);
+        const winner = pickNewer(lv, cv, 'Visit', (cp.name||lp.name) + ' — ' + (cv.complaint||cv.date||'visit'), conflicts);
+        if (winner !== lv) { visitMap.set(cv.id, winner); visitsUpdated++; }
       }
     }
+    const mergedVisits = [...visitMap.values()];
+    // Patient-level metadata (name, weight, allergies, etc.) resolved by patient.updatedAt
+    const winner = pickNewer(lp, cp, 'Patient', cp.name || lp.name, conflicts);
+    const finalPatient = winner === cp ? { ...cp } : { ...lp };
+    finalPatient.visits = mergedVisits;
+    patMap.set(cp.id, finalPatient);
   }
 
-  // ── Owners: merge by id ──────────────────────────────────────────
-  const ownerMap = new Map(local.owners.map(o => [o.id, o]));
-  for (const co of cloud.owners) { if (!ownerMap.has(co.id)) ownerMap.set(co.id, co); }
+  // ── Owners: per-record LWW (falls back to "keep local, add new" for legacy records without timestamps) ─
+  const ownerMap = new Map(local.owners.filter(o => !allDelOwners.has(o.id)).map(o => [o.id, o]));
+  for (const co of cloud.owners) {
+    if (allDelOwners.has(co.id)) continue;
+    if (!ownerMap.has(co.id)) { ownerMap.set(co.id, co); continue; }
+    const lo = ownerMap.get(co.id);
+    const winner = pickNewer(lo, co, 'Owner', co.name || lo.name, conflicts);
+    if (winner !== lo) ownerMap.set(co.id, winner);
+  }
 
-  // ── Calc history: merge by id, deduplicate ───────────────────────
+  // ── Calc history: append-only log, merge by id, deduplicate ──────
   const histMap = new Map(local.history.map(h => [h.id || h.ts, h]));
   let histAdded = 0;
   for (const ch of cloud.history) {
@@ -6151,12 +6672,17 @@ function mergeData(local, cloud) {
     patients: [...patMap.values()],
     owners: [...ownerMap.values()],
     history: [...histMap.values()].sort((a, b) => (b.ts||'') > (a.ts||'') ? 1 : -1),
-    doctorName: cloud.doctorName || local.doctorName,
+    doctorName: local.doctorName, // per-device field — never overwritten by cloud
     clinicName: cloud.clinicName || local.clinicName,
-    deletedIds: { meds: [...allDelMeds], patients: [...allDelPats] },
-    stats: { medsAdded, medsUpdated, patsAdded, visitsAdded, histAdded }
+    deletedIds: { meds: [...allDelMeds], patients: [...allDelPats], visits: [...allDelVisits], owners: [...allDelOwners] },
+    doctorRegistry: mergeDoctorRegistry(local.doctorRegistry, cloud.doctorRegistry),
+    conflicts,
+    stats: { medsAdded, medsUpdated, patsAdded, visitsAdded, visitsUpdated, histAdded }
   };
 }
+
+// Back-compat alias — kept in case any older call site still refers to mergeData
+function mergeData(local, cloud) { return mergeDataLWW(local, cloud); }
 
 async function pullFromGist() {
   if (!ghToken || !ghGistId) { toast('Configure GitHub token and Gist ID first', 'error'); return; }
@@ -6186,7 +6712,7 @@ async function pullFromGist() {
       '⬇ Pull Anyway');
     if (!proceed) { updateSyncStatusUI(); return; }
     // Replace with empty cloud data
-    await applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudData.doctorName);
+    await applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudData.doctorName, cloudData.doctorRegistry);
     return;
   }
 
@@ -6195,45 +6721,54 @@ async function pullFromGist() {
   if (!choice) { updateSyncStatusUI(); return; }
 
   if (choice === 'replace') {
-    await applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudData.doctorName);
+    await applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudData.doctorName, cloudData.doctorRegistry);
   } else {
     // Smart merge
     const local = {
       meds, patients, owners,
       history: calcHistory,
-      doctorName
+      doctorName, doctorRegistry
     };
     const cloud = {
       meds: cloudMeds.map(ensureV3Fields),
       patients: cloudPatients,
       owners: cloudOwners,
       history: cloudHistory,
-      doctorName: cloudData.doctorName
+      doctorName: cloudData.doctorName,
+      doctorRegistry: cloudData.doctorRegistry
     };
-    const merged = mergeData(local, cloud);
+    if (cloudData.clinicId) adoptClinicId(cloudData.clinicId);
+    const merged = mergeDataLWW(local, cloud);
     meds = merged.meds.map(ensureV3Fields);
-    patients = merged.patients;
-    owners = merged.owners;
+    patients = merged.patients.map(ensurePatientSyncFields);
+    owners = merged.owners.map(ensureOwnerSyncFields);
     calcHistory = merged.history;
     if (merged.doctorName) doctorName = merged.doctorName;
     if (merged.clinicName) clinicName = merged.clinicName;
     deletedIds = merged.deletedIds || deletedIds;
+    if (merged.doctorRegistry) { doctorRegistry = merged.doctorRegistry; try { localStorage.setItem('vd_doctor_registry', JSON.stringify(doctorRegistry)); } catch(e) {} }
+    (merged.conflicts || []).forEach(logSyncConflict);
+    clearPendingChanges();
     await save();
     await savePatients();
     linkLibraryDrugContras(); updateDoctorDisplay();
     renderCalcList(); renderMedList(); renderPatientList(); renderHistory(); updateStats();
     updateSyncStatusUI('ok');
     const s = merged.stats;
-    toast(`✅ Merged: +${s.medsAdded} meds, +${s.patsAdded} patients, +${s.visitsAdded} visits, +${s.histAdded} calcs`);
+    let msg = `✅ Merged: +${s.medsAdded} meds, +${s.patsAdded} patients, +${s.visitsAdded} visits, +${s.histAdded} calcs`;
+    if (merged.conflicts?.length) msg += ` — ⚠ ${merged.conflicts.length} conflict${merged.conflicts.length!==1?'s':''} logged`;
+    toast(msg);
   }
 }
 
-async function applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudDoctorName) {
+async function applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwners, cloudDoctorName, cloudDoctorRegistry) {
   meds = cloudMeds.map(ensureV3Fields);
   calcHistory = cloudHistory;
   patients = cloudPatients;
   owners = cloudOwners;
   if (cloudDoctorName) doctorName = cloudDoctorName;
+  if (cloudDoctorRegistry) { doctorRegistry = mergeDoctorRegistry(doctorRegistry, cloudDoctorRegistry); try { localStorage.setItem('vd_doctor_registry', JSON.stringify(doctorRegistry)); } catch(e) {} }
+  touchDoctorRegistry();
   await save();
   await savePatients();
   linkLibraryDrugContras(); updateDoctorDisplay();
@@ -6243,16 +6778,37 @@ async function applyCloudData(cloudMeds, cloudPatients, cloudHistory, cloudOwner
 }
 
 // Sync choice dialog — merge or replace
+let _syncChoiceResolve = null;
+function syncChoiceResolve(val) {
+  document.getElementById('sync-choice-modal').classList.remove('show');
+  if (_syncChoiceResolve) { _syncChoiceResolve(val); _syncChoiceResolve = null; }
+}
 function syncChoiceDialog(localSummary, cloudSummary) {
   return new Promise(resolve => {
     const m = document.getElementById('sync-choice-modal');
     document.getElementById('sc-local').textContent = localSummary;
     document.getElementById('sc-cloud').textContent = cloudSummary;
-    document.getElementById('sc-merge-btn').onclick = () => { m.classList.remove('show'); resolve('merge'); };
-    document.getElementById('sc-replace-btn').onclick = () => { m.classList.remove('show'); resolve('replace'); };
-    document.getElementById('sc-cancel-btn').onclick = () => { m.classList.remove('show'); resolve(null); };
+    _syncChoiceResolve = resolve;
+    document.getElementById('sc-merge-btn').onclick = () => syncChoiceResolve('merge');
+    document.getElementById('sc-replace-btn').onclick = () => syncChoiceResolve('replace');
+    document.getElementById('sc-cancel-btn').onclick = () => syncChoiceResolve(null);
     m.classList.add('show');
   });
+}
+
+// Scans all records for the single most recent edit, so the sync status can show
+// "Last edited by Dr. X at ..." — a quick at-a-glance answer to "who touched this last".
+function mostRecentEditSummary() {
+  let best = null;
+  const consider = (rec) => {
+    if (!rec?.updatedAt) return;
+    const t = Date.parse(rec.updatedAt);
+    if (!best || t > best.t) best = { t, updatedAt: rec.updatedAt, updatedBy: rec.updatedBy };
+  };
+  meds.forEach(consider);
+  patients.forEach(p => { consider(p); (p.visits || []).forEach(consider); });
+  owners.forEach(consider);
+  return best;
 }
 
 function updateSyncStatusUI(state) {
@@ -6261,6 +6817,15 @@ function updateSyncStatusUI(state) {
   const sub = document.getElementById('sync-last-time');
   const cnt = document.getElementById('sync-data-count');
   const headerDot = document.getElementById('header-sync-dot');
+
+  const drIdEl = document.getElementById('doctor-id-display');
+  const clIdEl = document.getElementById('clinic-id-display');
+  if (drIdEl) drIdEl.textContent = doctorId ? (doctorName ? doctorName + ' · ' + doctorId.slice(0,10) : doctorId.slice(0,14)) : '–';
+  if (clIdEl) clIdEl.textContent = clinicId ? clinicId.slice(0,14) : '–';
+  updatePendingBadge();
+  updateConflictBadge();
+  renderSyncConflicts();
+  refreshClinicModeUI();
 
   // Determine display values
   let dotColor = 'var(--muted)';
@@ -6288,6 +6853,12 @@ function updateSyncStatusUI(state) {
   if (txt) txt.textContent = statusText;
   if (sub && subText) sub.textContent = subText;
   if (cnt) cnt.textContent = (meds.length || patients.length) ? `${meds.length} meds · ${patients.length} patients · ${calcHistory.length} calculations` : '';
+
+  const editorEl = document.getElementById('sync-last-editor');
+  if (editorEl) {
+    const last = ghToken ? mostRecentEditSummary() : null;
+    editorEl.textContent = last ? `Last edited by ${doctorDisplayName(last.updatedBy)} · ${new Date(last.updatedAt).toLocaleString()}` : '';
+  }
 
   // Update header dot
   if (headerDot) {
@@ -6467,13 +7038,16 @@ function printVisitRx(pid, vid) {
 }
 
 let customRxPatientId = null;
+function closeCustomRxModal() {
+  document.getElementById('custom-rx-modal').classList.remove('show');
+}
 function openCustomRxModal(pid) {
   customRxPatientId = pid;
   setVal('crx-diagnosis', '');
   setVal('crx-drugs', '');
   setVal('crx-notes', '');
   document.getElementById('crx-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('custom-rx-modal').classList.add('show');
+  pushPage({ id:'custom-rx-modal', label:'Custom Prescription', tab:'patients', show(){ document.getElementById('custom-rx-modal').classList.add('show'); }, hide: closeCustomRxModal });
 }
 
 function printCustomRx() {
@@ -6485,7 +7059,7 @@ function printCustomRx() {
   if (!drugs.length) return toast('Add at least one medication', 'warn');
   const dateVal = document.getElementById('crx-date').value;
   const dateStr = dateVal ? new Date(dateVal).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-  document.getElementById('custom-rx-modal').classList.remove('show');
+  popPage();
   printRxDocument({
     clinicName: rxClinicName(),
     date: dateStr,
@@ -6801,6 +7375,7 @@ function printFallback(text) {
 // ─── INIT ─────────────────────────────────────────────────
 (async () => {
   try {
+    initIdentity();
     await loadData();
     await loadPatients();
     // Deduplicate meds by id (guard against repeated syncs adding duplicates)
@@ -6812,11 +7387,14 @@ function printFallback(text) {
     linkLibraryDrugContras();
     initSessions();
     updateDoctorDisplay();
+    touchDoctorRegistry();
     renderCalcList();
     renderSessionTabs();
     initDragDrop();
     updateStats();
     updateSyncStatusUI();
+    updatePendingBadge();
+    updateConflictBadge();
     appReady = true; // allow manual syncs now that data is loaded
     // Sync once on open if token is configured (silent — won't show error toasts)
     if (ghToken) setTimeout(() => syncNow(true), 1500);
@@ -6840,18 +7418,32 @@ if ('serviceWorker' in navigator && location.protocol !== 'blob:' && !location.h
 let _fluidUseFormula = true; // comprehensive maintenance toggle
 
 function fluidShowMenu() {
+  // If we got here via the stack (Back from a pushed fluid screen), popPage()
+  // already restores the menu — this direct call is for non-stack callers only.
   document.getElementById('fluid-menu').style.display = 'flex';
   ['basic','comprehensive','potassium'].forEach(s =>
     document.getElementById('fluid-screen-'+s).style.display = 'none'
   );
 }
 
+const FLUID_SCREEN_LABELS = { basic: 'Basic Rate', comprehensive: 'Comprehensive Rate', potassium: 'Potassium Infusion' };
+
 function fluidShowScreen(name) {
-  document.getElementById('fluid-menu').style.display = 'none';
-  ['basic','comprehensive','potassium'].forEach(s =>
-    document.getElementById('fluid-screen-'+s).style.display = 'none'
-  );
-  document.getElementById('fluid-screen-'+name).style.display = 'block';
+  pushPage({
+    id: 'fluid-' + name,
+    label: FLUID_SCREEN_LABELS[name] || 'Fluid Calculator',
+    tab: 'calc',
+    show() {
+      document.getElementById('fluid-menu').style.display = 'none';
+      ['basic','comprehensive','potassium'].forEach(s =>
+        document.getElementById('fluid-screen-'+s).style.display = (s === name ? 'block' : 'none')
+      );
+    },
+    hide() {
+      document.getElementById('fluid-screen-'+name).style.display = 'none';
+      document.getElementById('fluid-menu').style.display = 'flex';
+    }
+  });
   // clear results
   ['fb-result','fc-result','fp-result'].forEach(id => {
     const el = document.getElementById(id);
@@ -7197,35 +7789,41 @@ async function syncNow(silent = false) {
         doctorName = fresh.doctorName || doctorName;
       }
       const freshP = await idbGet('vetdose_patients');
-      if (Array.isArray(freshP) && freshP.length > 0) patients = freshP;
+      if (Array.isArray(freshP) && freshP.length > 0) patients = freshP.map(ensurePatientSyncFields);
       const freshO = await idbGet('vetdose_owners');
-      if (Array.isArray(freshO) && freshO.length > 0) owners = freshO;
+      if (Array.isArray(freshO) && freshO.length > 0) owners = freshO.map(ensureOwnerSyncFields);
     }
 
-    // Step 2: If a gist exists, fetch cloud and MERGE — but local always wins conflicts
+    // Step 2: If a gist exists, fetch cloud and MERGE using per-record last-write-wins
+    let syncedConflictCount = 0;
     if (ghGistId) {
       try {
         const cloudData = await fetchGistContent();
+        if (cloudData.clinicId) adoptClinicId(cloudData.clinicId);
         const cloudMeds = Array.isArray(cloudData.meds) ? cloudData.meds : [];
         const cloudPatients = Array.isArray(cloudData.patients) ? cloudData.patients : [];
         const cloudHasData = cloudMeds.length > 0 || cloudPatients.length > 0;
         if (cloudHasData) {
-          // LOCAL-FIRST merge: local data takes priority in conflicts
-          const merged = mergeDataLocalFirst(
-            { meds, patients, owners, history: calcHistory, doctorName, clinicName, deletedIds },
+          const merged = mergeDataLWW(
+            { meds, patients, owners, history: calcHistory, doctorName, clinicName, deletedIds, doctorRegistry },
             { meds: cloudMeds.map(ensureV3Fields),
-              patients: cloudPatients,
-              owners: Array.isArray(cloudData.owners) ? cloudData.owners : [],
+              patients: cloudPatients.map(ensurePatientSyncFields),
+              owners: (Array.isArray(cloudData.owners) ? cloudData.owners : []).map(ensureOwnerSyncFields),
               history: Array.isArray(cloudData.calcHistory) ? cloudData.calcHistory : [],
               doctorName: cloudData.doctorName,
-              clinicName: cloudData.clinicName }
+              clinicName: cloudData.clinicName,
+              doctorRegistry: cloudData.doctorRegistry }
           );
           meds = merged.meds;
           patients = merged.patients;
           owners = merged.owners;
           calcHistory = merged.history;
           deletedIds = merged.deletedIds || deletedIds;
-          // NOTE: local doctorName/clinicName always wins — don't overwrite from cloud
+          // doctorName stays local (each doctor's own name); clinicName is shared
+          if (merged.clinicName) clinicName = merged.clinicName;
+          if (merged.doctorRegistry) { doctorRegistry = merged.doctorRegistry; try { localStorage.setItem('vd_doctor_registry', JSON.stringify(doctorRegistry)); } catch(e) {} }
+          (merged.conflicts || []).forEach(logSyncConflict);
+          syncedConflictCount = merged.conflicts?.length || 0;
           await save();
           await savePatients();
         }
@@ -7246,7 +7844,8 @@ async function syncNow(silent = false) {
     }
     lastSyncTime = new Date();
     localStorage.setItem('vd_gh_last_sync', lastSyncTime.toISOString());
-    if (!silent) toast('✅ Synced to GitHub');
+    clearPendingChanges(); // everything local has now been merged + pushed
+    if (!silent) toast(syncedConflictCount ? `✅ Synced — ⚠ ${syncedConflictCount} conflict${syncedConflictCount!==1?'s':''} logged` : '✅ Synced to GitHub');
     updateSyncStatusUI('ok');
   } catch(e) {
     console.error('Gist sync failed:', e);
@@ -7260,63 +7859,6 @@ async function syncNow(silent = false) {
   syncInProgress = false;
 }
 
-// Local-first merge: local wins ALL field-level conflicts; cloud only contributes new items
-function mergeDataLocalFirst(local, cloud) {
-  // Tombstones union
-  const localDelMeds = new Set(local.deletedIds?.meds || []);
-  const cloudDelMeds = new Set(cloud.deletedIds?.meds || []);
-  const allDelMeds = new Set([...localDelMeds, ...cloudDelMeds]);
-  const localDelPats = new Set(local.deletedIds?.patients || []);
-  const cloudDelPats = new Set(cloud.deletedIds?.patients || []);
-  const allDelPats = new Set([...localDelPats, ...cloudDelPats]);
-
-  // MEDS: local always wins on conflict (updatedAt ignored)
-  const medMap = new Map(local.meds.filter(m => !allDelMeds.has(m.id)).map(m => [m.id, m]));
-  for (const cm of cloud.meds) {
-    if (allDelMeds.has(cm.id)) continue;
-    if (!medMap.has(cm.id)) medMap.set(cm.id, cm); // new from cloud — add
-    // existing local med: local wins, do NOT update from cloud
-  }
-
-  // PATIENTS: local always wins; only import new patients from cloud
-  const patMap = new Map(local.patients.filter(p => !allDelPats.has(p.id)).map(p => [p.id, JSON.parse(JSON.stringify(p))]));
-  for (const cp of cloud.patients) {
-    if (allDelPats.has(cp.id)) continue;
-    if (!patMap.has(cp.id)) {
-      patMap.set(cp.id, cp); // new patient from cloud
-    } else {
-      // Merge visits only — local patient fields win
-      const lp = patMap.get(cp.id);
-      const visitIds = new Set((lp.visits || []).map(v => v.id));
-      for (const cv of (cp.visits || [])) {
-        if (!visitIds.has(cv.id)) { (lp.visits = lp.visits || []).push(cv); }
-      }
-      // local metadata wins — no Object.assign from cloud
-    }
-  }
-
-  // OWNERS: local wins; add new from cloud
-  const ownerMap = new Map(local.owners.map(o => [o.id, o]));
-  for (const co of cloud.owners) { if (!ownerMap.has(co.id)) ownerMap.set(co.id, co); }
-
-  // HISTORY: merge by id, dedup
-  const histMap = new Map(local.history.map(h => [h.id || h.ts, h]));
-  for (const ch of cloud.history) {
-    const key = ch.id || ch.ts;
-    if (!histMap.has(key)) histMap.set(key, ch);
-  }
-
-  return {
-    meds: [...medMap.values()],
-    patients: [...patMap.values()],
-    owners: [...ownerMap.values()],
-    history: [...histMap.values()].sort((a, b) => (b.ts||'') > (a.ts||'') ? 1 : -1),
-    doctorName: local.doctorName, // local always wins
-    clinicName: local.clinicName, // local always wins
-    deletedIds: { meds: [...allDelMeds], patients: [...allDelPats] }
-  };
-}
-
 // Override scheduleGistSync to respect auto-sync toggle
 function scheduleGistSync() {
   if (!_autoSyncEnabled) return; // paused
@@ -7325,9 +7867,69 @@ function scheduleGistSync() {
   gistSyncTimer = setTimeout(() => syncNow(true), 3000);
 }
 
+// ─── SYNC-ON-RESUME ────────────────────────────────────────
+// When the app comes back to the foreground (tab refocused, mobile app resumed
+// from background, PWA restored from bfcache) doctor A may well have pushed
+// changes while this device was backgrounded. Pull them in automatically
+// instead of waiting for this doctor's next edit or manual tap.
+const RESUME_SYNC_MIN_GAP_MS = 15 * 1000; // don't resync more than once per 15s from resume triggers
+let _lastResumeSyncAttempt = 0;
+
+function trySyncOnResume(reason) {
+  if (!_autoSyncEnabled || !ghToken || !appReady || syncInProgress) return;
+  const now = Date.now();
+  if (now - _lastResumeSyncAttempt < RESUME_SYNC_MIN_GAP_MS) return;
+  _lastResumeSyncAttempt = now;
+  syncNow(true);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') trySyncOnResume('visibility');
+});
+window.addEventListener('focus', () => trySyncOnResume('focus'));
+window.addEventListener('pageshow', (e) => { if (e.persisted) trySyncOnResume('bfcache'); });
+
+// ─── LIVE POLLING WHILE APP IS OPEN ────────────────────────
+// Optional: periodically pull+merge while the app sits open, so doctor B sees
+// doctor A's new patient without switching away and back or tapping Sync Now.
+// Off by default (0). Persisted as milliseconds; 0 = off.
+let _livePollTimer = null;
+let _livePollIntervalMs = 0;
+
+function loadLivePollPref() {
+  try {
+    const saved = localStorage.getItem('vd_live_poll_ms');
+    _livePollIntervalMs = saved ? parseInt(saved, 10) || 0 : 0;
+  } catch(e) { _livePollIntervalMs = 0; }
+  const sel = document.getElementById('live-poll-select');
+  if (sel) sel.value = String(_livePollIntervalMs);
+  restartLivePolling();
+}
+
+function setLivePollInterval() {
+  const sel = document.getElementById('live-poll-select');
+  _livePollIntervalMs = sel ? (parseInt(sel.value, 10) || 0) : 0;
+  try { localStorage.setItem('vd_live_poll_ms', String(_livePollIntervalMs)); } catch(e) {}
+  restartLivePolling();
+  toast(_livePollIntervalMs ? `✅ Live sync every ${_livePollIntervalMs/1000}s while app is open` : 'Live sync while open disabled');
+}
+
+function restartLivePolling() {
+  clearInterval(_livePollTimer);
+  _livePollTimer = null;
+  if (!_livePollIntervalMs) return;
+  _livePollTimer = setInterval(() => {
+    // Only poll while the tab is actually visible and we're not mid-sync/mid-edit
+    if (document.visibilityState !== 'visible') return;
+    if (!_autoSyncEnabled || !ghToken || !appReady || syncInProgress) return;
+    syncNow(true);
+  }, _livePollIntervalMs);
+}
+
 // Init extras on page load
 document.addEventListener('DOMContentLoaded', function() {
   loadAutoSyncPref();
+  loadLivePollPref();
 });
 // ─── FLUID → PATIENT RECORD ──────────────────────────────────
 let _pendingFluidLine = '';
@@ -7433,7 +8035,7 @@ function saveFluidToPatient() {
         </div>
       </div>`;
     }).join('');
-    document.getElementById('visit-picker-modal').classList.add('show');
+    pushPage({ id:'visit-picker-modal', label:'Save to Patient', tab:'calc', show(){ document.getElementById('visit-picker-modal').classList.add('show'); }, hide: closeVisitPickerModal });
   } else {
     visitPickerNewVisitFluid();
   }
@@ -7454,16 +8056,18 @@ function visitPickerAppendFluid(vid) {
     if (!visit.soap.o) visit.soap.o = {};
     visit.soap.o.weight = _pendingFluidWeight.toString();
   }
+  stampRecord(visit, 'visits', pat.id + ':' + visit.id);
+  stampRecord(pat, 'patients', pat.id);
 
   savePatients();
-  document.getElementById('visit-picker-modal').classList.remove('show');
+  popPage();
   toast('✅ Fluid plan added to visit', 'success');
   scheduleGistSync();
 }
 
 // Open new visit modal pre-filled with fluid plan
 function visitPickerNewVisitFluid() {
-  document.getElementById('visit-picker-modal').classList.remove('show');
+  popVisitPickerIfOpen();
   currentVisitPatientId = _pendingPatientId;
   editingVisitId = null;
   const pat = patients.find(x => x.id === _pendingPatientId);
@@ -7472,15 +8076,14 @@ function visitPickerNewVisitFluid() {
   setVal('vm-date', new Date().toISOString().slice(0, 10));
   setVal('p-fluids', _pendingFluidLine);
   if (_pendingFluidWeight) setVal('o-weight', _pendingFluidWeight.toString());
-  document.getElementById('visit-modal').classList.add('show');
+  pushPage({ id:'visit-modal', label:'New Visit', tab:'calc', show(){ document.getElementById('visit-modal').classList.add('show'); }, hide: closeVisitModal });
   switchVisitModalTab('plan');
   toast('💧 Pre-filled fluid plan in Plan tab', 'success');
 }
 
 // Also make drug save call scheduleGistSync (patch visitPickerAppend)
-const _origVisitPickerAppend = visitPickerAppend;
 function visitPickerAppend(vid) {
-  _origVisitPickerAppend(vid);
+  visitPickerAppendCore(vid);
   scheduleGistSync();
 }
 
